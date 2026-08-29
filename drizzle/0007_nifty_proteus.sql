@@ -1,0 +1,1 @@
+DROP INDEX "campaign_recipients_campaign_phone_unique";

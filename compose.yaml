@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lead-dashboard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lead_dashboard
+      POSTGRES_USER: lead_dashboard
+      POSTGRES_PASSWORD: lead_dashboard_dev_password
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - lead-dashboard-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U lead_dashboard -d lead_dashboard
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: lead-dashboard-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - lead-dashboard-redis-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  lead-dashboard-postgres-data:
+  lead-dashboard-redis-data:

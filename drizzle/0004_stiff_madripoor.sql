@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "campaign_recipients_campaign_phone_unique" ON "campaign_recipients" USING btree ("campaign_id","phone_normalized");

@@ -1,4 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lead Dashboard
+
+Dashboard admin tunggal untuk pekerjaan scraping Gosom, normalisasi lead, dan kesiapan kampanye WhatsApp melalui Evolution API.
+
+Dokumentasi implementasi fondasi UI ada di [docs/implementation.md](docs/implementation.md).
+
+## Environment
+
+Minimal env untuk menjalankan dashboard:
+
+```bash
+DATABASE_URL=postgres://...
+REDIS_URL=redis://127.0.0.1:6380
+GOSOM_API_URL=https://...
+EVOLUTION_API_URL=https://...
+EVOLUTION_INSTANCE=...
+EVOLUTION_API_KEY=...
+DASHBOARD_AUTH_EMAIL=admin@example.com
+DASHBOARD_AUTH_PASSWORD=change-this-password
+```
+
+Opsional:
+
+```bash
+WHATSAPP_TEST_NUMBER=6281234567890
+DASHBOARD_AUTH_SECRET=isi-random-panjang-untuk-sign-cookie
+```
 
 ## Getting Started
 
@@ -16,18 +42,17 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Jalankan worker campaign di terminal terpisah saat ingin memproses antrean WhatsApp:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run worker:campaigns
+```
 
-## Learn More
+Halaman dashboard dilindungi login. Credential diambil dari `DASHBOARD_AUTH_EMAIL` dan `DASHBOARD_AUTH_PASSWORD`.
 
-To learn more about Next.js, take a look at the following resources:
+## Dokumentasi
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Lihat [docs/implementation.md](docs/implementation.md) untuk ringkasan fitur dan verifikasi.
 
 ## Deploy on Vercel
 

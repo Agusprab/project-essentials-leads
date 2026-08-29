@@ -1,0 +1,1 @@
+ALTER TABLE "scrape_jobs" ALTER COLUMN "max_time_seconds" SET DATA TYPE bigint;
