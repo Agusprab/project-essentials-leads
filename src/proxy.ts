@@ -1,30 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import {
-  authCookieName,
-  getAuthConfig,
-  verifyAuthSessionValue,
-} from "@/lib/auth/session";
+import { authCookieName } from "@/lib/auth/session";
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isServerAction = request.headers.has("next-action");
 
-  if (pathname === "/login" && isServerAction) {
+  if (isServerAction) {
     return NextResponse.next();
   }
 
   const isLoginPage = pathname === "/login";
-  const isAuthenticated = await verifyAuthSessionValue(
-    request.cookies.get(authCookieName)?.value,
-    getAuthConfig(),
-  );
+  const hasSessionCookie = Boolean(request.cookies.get(authCookieName)?.value);
 
-  if (isLoginPage && isAuthenticated) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-
-  if (!isLoginPage && !isAuthenticated) {
+  if (!isLoginPage && !hasSessionCookie) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
