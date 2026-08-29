@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   createAuthSessionValue,
+  resolveAuthCookieSecure,
   verifyAuthSessionValue,
 } from "@/lib/auth/session";
 
@@ -30,4 +31,38 @@ test("auth session value rejects a different secret", async () => {
   });
 
   assert.equal(isValid, false);
+});
+
+test("resolveAuthCookieSecure follows forwarded proto", () => {
+  assert.equal(
+    resolveAuthCookieSecure({
+      forwardedProto: "https",
+      override: undefined,
+    }),
+    true,
+  );
+  assert.equal(
+    resolveAuthCookieSecure({
+      forwardedProto: "http",
+      override: undefined,
+    }),
+    false,
+  );
+});
+
+test("resolveAuthCookieSecure supports explicit override", () => {
+  assert.equal(
+    resolveAuthCookieSecure({
+      forwardedProto: "http",
+      override: "true",
+    }),
+    true,
+  );
+  assert.equal(
+    resolveAuthCookieSecure({
+      forwardedProto: "https",
+      override: "false",
+    }),
+    false,
+  );
 });

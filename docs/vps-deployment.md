@@ -90,6 +90,8 @@ EVOLUTION_API_KEY=api_key_evolution
 DASHBOARD_AUTH_EMAIL=admin@domain.com
 DASHBOARD_AUTH_PASSWORD=password_login_yang_kuat
 DASHBOARD_AUTH_SECRET=random_panjang_minimal_32_karakter
+# Kosongkan untuk auto dari reverse proxy. Isi false jika sementara akses via http://IP:3004.
+DASHBOARD_AUTH_COOKIE_SECURE=
 WHATSAPP_TEST_NUMBER=628xxxxxxxxxx
 ```
 
@@ -150,6 +152,8 @@ Websockets:   aktif
 ```
 
 Aktifkan SSL certificate dari menu Nginx Proxy Manager. Setelah domain bekerja, batasi akses port `3004` dari luar jaringan memakai firewall.
+
+Jika login dites langsung lewat `http://IP-VPS:3004`, browser akan menolak cookie `Secure`. Untuk mode test sementara itu, isi `DASHBOARD_AUTH_COOKIE_SECURE=false` di `.env.production`, lalu restart `app`. Setelah HTTPS via Nginx Proxy Manager aktif, kosongkan kembali atau isi `true`.
 
 Opsi yang lebih bersih adalah menghubungkan container Nginx Proxy Manager dan `app` ke Docker network yang sama, lalu forward langsung ke nama service. Untuk itu perlu cek nama network Compose NPM terlebih dahulu.
 

@@ -1,12 +1,13 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
   authCookieName,
   createAuthSessionValue,
   getAuthConfig,
+  resolveAuthCookieSecure,
 } from "@/lib/auth/session";
 
 const sessionMaxAgeSeconds = 60 * 60 * 24 * 7;
@@ -26,12 +27,15 @@ export async function loginAction(formData: FormData) {
   }
 
   const cookieStore = await cookies();
+  const requestHeaders = await headers();
   cookieStore.set({
     name: authCookieName,
     value: await createAuthSessionValue(config.email, config.secret),
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: resolveAuthCookieSecure({
+      forwardedProto: requestHeaders.get("x-forwarded-proto"),
+    }),
     path: "/",
     maxAge: sessionMaxAgeSeconds,
   });

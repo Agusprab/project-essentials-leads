@@ -73,6 +73,44 @@ export async function verifyAuthSessionValue(
   return value === expectedValue;
 }
 
+export function resolveAuthCookieSecure({
+  forwardedProto,
+  override = process.env.DASHBOARD_AUTH_COOKIE_SECURE,
+}: {
+  forwardedProto?: string | null;
+  override?: string;
+} = {}): boolean {
+  const normalizedOverride = override?.trim().toLowerCase();
+
+  if (
+    normalizedOverride === "true" ||
+    normalizedOverride === "1" ||
+    normalizedOverride === "yes"
+  ) {
+    return true;
+  }
+
+  if (
+    normalizedOverride === "false" ||
+    normalizedOverride === "0" ||
+    normalizedOverride === "no"
+  ) {
+    return false;
+  }
+
+  const firstForwardedProto = forwardedProto
+    ?.split(",")
+    .at(0)
+    ?.trim()
+    .toLowerCase();
+
+  if (firstForwardedProto) {
+    return firstForwardedProto === "https";
+  }
+
+  return false;
+}
+
 async function signSessionPayload(
   payload: string,
   secret: string,
