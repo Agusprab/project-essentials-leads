@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -208,19 +209,28 @@ const dummyLeads = [
 >;
 
 async function main() {
-  const [scrapeJob] = await db
+  const [insertedScrapeJob] = await db
     .insert(scrapeJobs)
     .values(dummyScrapeJob)
-    .onConflictDoUpdate({
+    .onConflictDoNothing({
       target: scrapeJobs.externalJobId,
-      set: {
-        ...dummyScrapeJob,
-        updatedAt: now,
-      },
     })
     .returning({
       id: scrapeJobs.id,
     });
+  const [scrapeJob] = insertedScrapeJob
+    ? [insertedScrapeJob]
+    : await db
+        .select({
+          id: scrapeJobs.id,
+        })
+        .from(scrapeJobs)
+        .where(eq(scrapeJobs.externalJobId, dummyScrapeJob.externalJobId))
+        .limit(1);
+
+  if (!scrapeJob) {
+    throw new Error("dummy_scrape_job_not_found");
+  }
 
   await db
     .insert(leads)
@@ -253,8 +263,13 @@ async function main() {
   console.log("Seed dummy selesai: 1 scrape job dan 8 lead dummy siap campaign.");
 }
 
-try {
-  await main();
-} finally {
-  await client.end();
-}
+main()
+  .catch((error: unknown) => {
+    console.error("Seed dummy gagal", {
+      error: error instanceof Error ? error.message : "unknown_error",
+    });
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await client.end();
+  });
