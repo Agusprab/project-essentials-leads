@@ -4,7 +4,7 @@ import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { ScrapingJobsTable } from "@/components/scraping/scraping-jobs-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CampaignIcon, LeadsIcon, PlusIcon, SearchMapIcon, SettingsIcon } from "@/components/ui/icons";
-import { getDashboardOverview } from "@/lib/dashboard/overview";
+import { getDashboardOverview, withLiveGosomJobMetrics } from "@/lib/dashboard/overview";
 import { listGosomJobs } from "@/lib/gosom/client";
 import { getSettingsStatus } from "@/lib/settings/status";
 
@@ -17,6 +17,10 @@ export default async function HomePage() {
     getSettingsStatus(),
   ]);
 
+  const liveOverview =
+    gosomJobsResult.state === "ready"
+      ? withLiveGosomJobMetrics(overview, gosomJobsResult.jobs)
+      : overview;
   const recentJobs = gosomJobsResult.state === "ready" ? gosomJobsResult.jobs.slice(0, 4) : [];
 
   return (
@@ -58,7 +62,7 @@ export default async function HomePage() {
       </section>
 
       {/* KPI Cards & Quality Funnel */}
-      <DashboardOverview overview={overview} />
+      <DashboardOverview overview={liveOverview} />
 
       {/* Split Main Operations Grid (8 cols + 4 cols) */}
       <div className="grid gap-6 lg:grid-cols-12">
@@ -201,5 +205,4 @@ export default async function HomePage() {
     </div>
   );
 }
-
 

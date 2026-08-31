@@ -1,6 +1,8 @@
 import { and, count, eq, inArray, isNull, or } from "drizzle-orm";
 
 import { leads, scrapeJobs } from "@/db/schema";
+import type { GosomJob } from "@/lib/gosom/client";
+import { countActiveGosomJobs } from "@/lib/gosom/status";
 
 export type DashboardMetrics = {
   totalScrapeJobs: number;
@@ -103,6 +105,23 @@ export async function getDashboardOverview(): Promise<DashboardOverviewResult> {
       metrics: emptyMetrics,
     };
   }
+}
+
+export function withLiveGosomJobMetrics(
+  overview: DashboardOverviewResult,
+  jobs: GosomJob[],
+): DashboardOverviewResult {
+  if (overview.state !== "ready") {
+    return overview;
+  }
+
+  return {
+    ...overview,
+    metrics: {
+      ...overview.metrics,
+      runningScrapeJobs: countActiveGosomJobs(jobs),
+    },
+  };
 }
 
 async function getCount(query: Promise<Array<{ value: number }>>): Promise<number> {
