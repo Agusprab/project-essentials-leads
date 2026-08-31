@@ -1,6 +1,7 @@
 import { ScrapingJobsTable } from "@/components/scraping/scraping-jobs-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PlusIcon, RefreshIcon } from "@/components/ui/icons";
+import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
 import { listGosomJobs } from "@/lib/gosom/client";
 
 import { syncGosomJobsAction } from "./actions";
@@ -31,12 +32,11 @@ export default async function ScrapingPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <form action={syncGosomJobsAction}>
-            <button
-              type="submit"
-              className="inline-flex h-10 items-center justify-center rounded-lg border border-[#B2DDFF] bg-[#EFF8FF] px-4 text-sm font-semibold text-[#175CD3] transition hover:bg-[#D1E9FF]"
-            >
-              Sinkronkan
-            </button>
+            <PendingSubmitButton
+              label="Sinkronkan"
+              pendingLabel="Sinkron..."
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#B2DDFF] bg-[#EFF8FF] px-4 text-sm font-semibold text-[#175CD3] transition hover:bg-[#D1E9FF] disabled:cursor-wait disabled:bg-[#D1E9FF]"
+            />
           </form>
           <a
             href="/scraping"

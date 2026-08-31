@@ -3,6 +3,7 @@ import Link from "next/link";
 import { deleteCampaignAction } from "@/app/(dashboard)/campaigns/actions";
 import { CampaignStatusBadge } from "@/components/campaigns/campaign-status-badge";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+import { DownloadIcon } from "@/components/ui/icons";
 import type { CampaignListItem } from "@/lib/campaigns/list-campaigns";
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
@@ -109,6 +110,13 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                         >
                           Detail
                         </Link>
+                        <a
+                          href={`/api/campaigns/${campaign.id}/report`}
+                          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-blue-700 shadow-2xs transition hover:bg-blue-100 active:bg-blue-200"
+                        >
+                          <DownloadIcon className="size-3.5" />
+                          CSV
+                        </a>
                         <ConfirmSubmitButton
                           label="Hapus"
                           confirmMessage={`Hapus campaign "${campaign.name}" beserta daftar recipient-nya?`}
@@ -126,4 +134,3 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     </div>
   );
 }
-

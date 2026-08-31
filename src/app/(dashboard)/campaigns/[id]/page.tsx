@@ -9,6 +9,7 @@ import {
 } from "@/app/(dashboard)/campaigns/actions";
 import { CampaignStatusBadge } from "@/components/campaigns/campaign-status-badge";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   getCampaign,
@@ -120,6 +121,7 @@ export default async function CampaignDetailPage({
             </p>
             <ConfirmSubmitButton
               label="Mulai pengiriman"
+              pendingLabel="Menyiapkan..."
               confirmMessage={`Mulai pengiriman campaign "${campaign.name}" ke ${campaign.totalRecipients.toLocaleString("id-ID")} recipient?`}
               icon="send"
               variant="neutral"
@@ -134,6 +136,7 @@ export default async function CampaignDetailPage({
                 <input type="hidden" name="campaignId" value={campaign.id} />
                 <ConfirmSubmitButton
                   label="Retry gagal"
+                  pendingLabel="Memproses..."
                   confirmMessage={`Masukkan ulang ${campaign.failedRecipients.toLocaleString("id-ID")} recipient gagal ke antrean?`}
                   icon="send"
                   variant="neutral"
@@ -145,6 +148,7 @@ export default async function CampaignDetailPage({
                 <input type="hidden" name="campaignId" value={campaign.id} />
                 <ConfirmSubmitButton
                   label="Batalkan campaign"
+                  pendingLabel="Membatalkan..."
                   confirmMessage={`Batalkan campaign "${campaign.name}"? Recipient yang belum terkirim akan ditandai batal.`}
                   icon="trash"
                 />
@@ -230,12 +234,11 @@ export default async function CampaignDetailPage({
               className="mt-1 h-11 w-full rounded-lg border border-[#D9E0EA] px-3 text-sm text-[#1D293B] outline-none transition focus:border-[#2563eb]"
             />
           </label>
-          <button
-            type="submit"
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-[#2563eb] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1d4ed8]"
-          >
-            Kirim test campaign
-          </button>
+          <PendingSubmitButton
+            label="Kirim test campaign"
+            pendingLabel="Mengirim test..."
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#2563eb] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1d4ed8] disabled:cursor-wait disabled:bg-[#2563eb]/80"
+          />
         </form>
       </section>
 

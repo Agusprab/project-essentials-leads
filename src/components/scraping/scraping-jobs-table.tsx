@@ -5,6 +5,7 @@ import {
 } from "@/app/(dashboard)/scraping/actions";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { DownloadIcon } from "@/components/ui/icons";
+import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
 
 import { JobStatusBadge } from "./job-status-badge";
 
@@ -99,18 +100,18 @@ export function ScrapingJobsTable({ jobs }: ScrapingJobsTableProps) {
                     </a>
                     <form action={importGosomJobAction}>
                       <input type="hidden" name="jobId" value={job.ID} />
-                      <button
-                        type="submit"
+                      <PendingSubmitButton
+                        label="Impor"
+                        pendingLabel="Mengimpor..."
                         disabled={!canImport(job.Status)}
                         className="inline-flex h-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 shadow-2xs transition hover:bg-blue-100 disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed"
-                      >
-                        Impor
-                      </button>
+                      />
                     </form>
                     <form action={deleteGosomJobAction}>
                       <input type="hidden" name="jobId" value={job.ID} />
                       <ConfirmSubmitButton
                         label="Hapus"
+                        pendingLabel="Menghapus..."
                         confirmMessage={`Hapus job "${job.Name}" dari Gosom dan database lokal? Lead hasil job ini juga akan terhapus jika sudah pernah diimpor.`}
                         icon="trash"
                       />
@@ -147,4 +148,3 @@ function formatRadius(value: number | null | undefined): string {
 function canImport(status: string): boolean {
   return ["ok", "success", "completed"].includes(status.toLowerCase());
 }
-

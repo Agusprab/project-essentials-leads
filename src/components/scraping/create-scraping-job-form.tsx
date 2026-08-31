@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { createGosomJobAction } from "@/app/(dashboard)/scraping/actions";
-import { PlusIcon } from "@/components/ui/icons";
+import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
 
 type CityOption = {
   label: string;
@@ -336,13 +336,11 @@ export function CreateScrapingJobForm() {
           </label>
         </div>
 
-        <button
-          type="submit"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-xs font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 active:bg-blue-800"
-        >
-          <PlusIcon className="size-4" />
-          <span>Kirim Job Scraping</span>
-        </button>
+        <PendingSubmitButton
+          label="Kirim Job Scraping"
+          pendingLabel="Membuat job..."
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-xs font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 active:bg-blue-800 disabled:cursor-wait disabled:bg-blue-500"
+        />
       </div>
     </form>
   );

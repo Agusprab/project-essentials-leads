@@ -1,5 +1,7 @@
 "use client";
 
+import { useFormStatus } from "react-dom";
+
 import { SendIcon, TrashIcon } from "@/components/ui/icons";
 
 type ConfirmSubmitButtonProps = {
@@ -8,6 +10,7 @@ type ConfirmSubmitButtonProps = {
   variant?: "danger" | "neutral";
   icon?: "send" | "trash";
   disabled?: boolean;
+  pendingLabel?: string;
 };
 
 export function ConfirmSubmitButton({
@@ -16,7 +19,10 @@ export function ConfirmSubmitButton({
   variant = "danger",
   icon,
   disabled = false,
+  pendingLabel = "Memproses...",
 }: ConfirmSubmitButtonProps) {
+  const { pending } = useFormStatus();
+  const isDisabled = disabled || pending;
   const className =
     variant === "danger"
       ? "border-[#FECDCA] text-[#B42318] hover:bg-[#FEF3F2]"
@@ -25,9 +31,10 @@ export function ConfirmSubmitButton({
   return (
     <button
       type="submit"
-      disabled={disabled}
+      disabled={isDisabled}
+      aria-busy={pending}
       onClick={(event) => {
-        if (disabled) {
+        if (isDisabled) {
           event.preventDefault();
           return;
         }
@@ -38,9 +45,19 @@ export function ConfirmSubmitButton({
       }}
       className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition ${className} disabled:pointer-events-none disabled:border-[#D9E0EA] disabled:text-[#98A2B3]`}
     >
-      {icon === "send" ? <SendIcon className="size-4" /> : null}
-      {icon === "trash" ? <TrashIcon className="size-4" /> : null}
-      {label}
+      {pending ? <PendingSpinner /> : null}
+      {!pending && icon === "send" ? <SendIcon className="size-4" /> : null}
+      {!pending && icon === "trash" ? <TrashIcon className="size-4" /> : null}
+      {pending ? pendingLabel : label}
     </button>
+  );
+}
+
+function PendingSpinner() {
+  return (
+    <span
+      aria-hidden="true"
+      className="size-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
+    />
   );
 }

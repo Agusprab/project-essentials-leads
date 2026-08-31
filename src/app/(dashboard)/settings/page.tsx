@@ -1,4 +1,5 @@
 import { testEvolutionTextAction } from "@/app/(dashboard)/settings/actions";
+import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
 import { getDefaultTestNumber } from "@/lib/evolution/test-send";
 import { getSettingsStatus, type ConnectionStatus } from "@/lib/settings/status";
 
@@ -133,12 +134,11 @@ function TestMessageForm({
             className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs sm:text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
           />
         </label>
-        <button
-          type="submit"
-          className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-600 px-5 text-xs font-semibold text-white shadow-2xs shadow-blue-600/20 transition hover:bg-blue-700 active:bg-blue-800"
-        >
-          Kirim Pesan Test
-        </button>
+        <PendingSubmitButton
+          label="Kirim Pesan Test"
+          pendingLabel="Mengirim..."
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-xs font-semibold text-white shadow-2xs shadow-blue-600/20 transition hover:bg-blue-700 active:bg-blue-800 disabled:cursor-wait disabled:bg-blue-500"
+        />
       </form>
     </section>
   );
