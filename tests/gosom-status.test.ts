@@ -7,6 +7,7 @@ test("isActiveGosomStatus only treats unfinished Gosom statuses as active", () =
   assert.equal(isActiveGosomStatus("pending"), true);
   assert.equal(isActiveGosomStatus("queued"), true);
   assert.equal(isActiveGosomStatus("running"), true);
+  assert.equal(isActiveGosomStatus("working"), true);
   assert.equal(isActiveGosomStatus(" Running "), true);
 
   assert.equal(isActiveGosomStatus("ok"), false);

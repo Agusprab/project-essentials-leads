@@ -2,7 +2,7 @@ import { and, count, eq, inArray, isNull, or } from "drizzle-orm";
 
 import { leads, scrapeJobs } from "@/db/schema";
 import type { GosomJob } from "@/lib/gosom/client";
-import { countActiveGosomJobs } from "@/lib/gosom/status";
+import { activeGosomStatuses, countActiveGosomJobs } from "@/lib/gosom/status";
 
 export type DashboardMetrics = {
   totalScrapeJobs: number;
@@ -50,7 +50,7 @@ export async function getDashboardOverview(): Promise<DashboardOverviewResult> {
         db
           .select({ value: count() })
           .from(scrapeJobs)
-          .where(inArray(scrapeJobs.status, ["pending", "queued", "running"])),
+          .where(inArray(scrapeJobs.status, activeGosomStatuses)),
       ),
       getCount(db.select({ value: count() }).from(leads)),
       getCount(

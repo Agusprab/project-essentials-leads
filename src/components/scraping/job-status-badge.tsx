@@ -17,6 +17,12 @@ const statusConfig = {
     dot: "bg-amber-500",
     pulse: true,
   },
+  working: {
+    label: "Berjalan",
+    className: "border-amber-300 bg-amber-50 text-amber-800",
+    dot: "bg-amber-500",
+    pulse: true,
+  },
   ok: {
     label: "Selesai",
     className: "border-emerald-300 bg-emerald-50 text-emerald-800",
@@ -80,4 +86,3 @@ export function JobStatusBadge({ status }: JobStatusBadgeProps) {
     </span>
   );
 }
-

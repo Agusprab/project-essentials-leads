@@ -1,6 +1,8 @@
 import type { GosomJob } from "@/lib/gosom/client";
 
-const activeStatuses = new Set(["pending", "queued", "running"]);
+export const activeGosomStatuses = ["pending", "queued", "running", "working"] as const;
+
+const activeStatuses = new Set<string>(activeGosomStatuses);
 
 export function isActiveGosomStatus(status: string): boolean {
   return activeStatuses.has(status.trim().toLowerCase());
