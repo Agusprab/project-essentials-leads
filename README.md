@@ -48,6 +48,14 @@ Jalankan worker campaign di terminal terpisah saat ingin memproses antrean Whats
 npm run worker:campaigns
 ```
 
+Jalankan worker scraping di terminal terpisah agar job antrean dikirim ke Gosom satu per satu:
+
+```bash
+npm run worker:scraping
+```
+
+Worker scraping memakai concurrency global `1`, jadi job berikutnya baru berjalan setelah job aktif selesai/gagal.
+
 Halaman dashboard dilindungi login. Credential diambil dari `DASHBOARD_AUTH_EMAIL` dan `DASHBOARD_AUTH_PASSWORD`.
 
 ## Dokumentasi

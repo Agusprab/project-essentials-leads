@@ -2,7 +2,7 @@ import { ScrapingJobsTable } from "@/components/scraping/scraping-jobs-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PlusIcon, RefreshIcon } from "@/components/ui/icons";
 import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
-import { listGosomJobs } from "@/lib/gosom/client";
+import { listScrapingJobs } from "@/lib/scraping/list-jobs";
 
 import { syncGosomJobsAction } from "./actions";
 
@@ -12,7 +12,7 @@ export default async function ScrapingPage({
   searchParams,
 }: PageProps<"/scraping">) {
   const params = await searchParams;
-  const result = await listGosomJobs();
+  const result = await listScrapingJobs();
   const syncMessage = getSyncMessage(params.sync, params.count);
   const importMessage = getImportMessage(params.import, params.count);
   const createMessage = getCreateMessage(params.create);
@@ -122,14 +122,14 @@ function getEmptyTitle(state: "ready" | "missing-config" | "error"): string {
 
 function getEmptyDescription(state: "ready" | "missing-config" | "error"): string {
   if (state === "missing-config") {
-    return "Isi GOSOM_API_URL di .env.local sebelum membaca daftar job.";
+    return "Isi DATABASE_URL di .env.local sebelum membaca antrean job.";
   }
 
   if (state === "error") {
     return "Periksa koneksi Gosom API. Detail teknis hanya dicatat di log server.";
   }
 
-  return "Buat job melalui Gosom API, lalu gunakan halaman ini untuk memantau statusnya.";
+  return "Buat job baru untuk memasukkannya ke antrean scraping.";
 }
 
 function getSyncMessage(
@@ -207,7 +207,14 @@ function getCreateMessage(
 
   if (normalizedState === "ready") {
     return {
-      text: "Job berhasil dibuat dan daftar job sudah disegarkan.",
+      text: "Job berhasil dibuat dan masuk antrean scraping.",
+      tone: "success",
+    };
+  }
+
+  if (normalizedState === "queued") {
+    return {
+      text: "Job berhasil masuk antrean. Worker scraping akan menjalankannya sesuai urutan.",
       tone: "success",
     };
   }
@@ -221,7 +228,7 @@ function getCreateMessage(
 
   if (normalizedState === "missing-config") {
     return {
-      text: "GOSOM_API_URL belum dikonfigurasi, job belum dibuat.",
+      text: "DATABASE_URL atau REDIS_URL belum dikonfigurasi, job belum bisa masuk antrean.",
       tone: "warning",
     };
   }

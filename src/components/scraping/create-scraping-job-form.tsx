@@ -161,7 +161,7 @@ export function CreateScrapingJobForm() {
           Buat Job Scraping Baru
         </h2>
         <p className="text-xs text-slate-500">
-          Tentukan nama job, kata kunci bisnis, target koordinat lokasi, dan parameter pencarian.
+          Job akan masuk antrean lokal dan dijalankan satu per satu oleh worker scraping.
         </p>
       </div>
 
@@ -337,8 +337,8 @@ export function CreateScrapingJobForm() {
         </div>
 
         <PendingSubmitButton
-          label="Kirim Job Scraping"
-          pendingLabel="Membuat job..."
+          label="Masukkan Antrean"
+          pendingLabel="Mengantrekan..."
           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-xs font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 active:bg-blue-800 disabled:cursor-wait disabled:bg-blue-500"
         />
       </div>

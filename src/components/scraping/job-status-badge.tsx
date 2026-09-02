@@ -11,6 +11,12 @@ const statusConfig = {
     dot: "bg-slate-400",
     pulse: false,
   },
+  submitting: {
+    label: "Mengirim",
+    className: "border-blue-300 bg-blue-50 text-blue-800",
+    dot: "bg-blue-500",
+    pulse: true,
+  },
   running: {
     label: "Berjalan",
     className: "border-amber-300 bg-amber-50 text-amber-800",

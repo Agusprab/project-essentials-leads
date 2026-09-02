@@ -21,8 +21,7 @@ export const scrapeJobs = pgTable(
       .notNull()
       .default("google_maps"),
 
-    externalJobId: text("external_job_id")
-      .notNull(),
+    externalJobId: text("external_job_id"),
 
     name: text("name")
       .notNull(),
@@ -66,7 +65,7 @@ export const scrapeJobs = pgTable(
 
     status: text("status")
       .notNull()
-      .default("pending"),
+      .default("queued"),
 
     resultCount: integer("result_count")
       .notNull()
@@ -78,6 +77,10 @@ export const scrapeJobs = pgTable(
       withTimezone: true,
     }),
 
+    submittedAt: timestamp("submitted_at", {
+      withTimezone: true,
+    }),
+
     completedAt: timestamp("completed_at", {
       withTimezone: true,
     }),
@@ -85,6 +88,20 @@ export const scrapeJobs = pgTable(
     importedAt: timestamp("imported_at", {
       withTimezone: true,
     }),
+
+    queuedAt: timestamp("queued_at", {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+
+    lastSyncedAt: timestamp("last_synced_at", {
+      withTimezone: true,
+    }),
+
+    attemptCount: integer("attempt_count")
+      .notNull()
+      .default(0),
 
     createdAt: timestamp("created_at", {
       withTimezone: true,

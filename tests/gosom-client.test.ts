@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { listGosomJobs } from "@/lib/gosom/client";
+import { createGosomJob, listGosomJobs } from "@/lib/gosom/client";
 
 const originalGosomApiUrl = process.env.GOSOM_API_URL;
 const originalFetch = globalThis.fetch;
@@ -44,4 +44,30 @@ test("listGosomJobs treats empty response body as empty job list", async () => {
     state: "ready",
     jobs: [],
   });
+});
+
+test("createGosomJob extracts a returned job id", async () => {
+  process.env.GOSOM_API_URL = "http://gosom.test";
+  globalThis.fetch = async () =>
+    Response.json({
+      id: "gosom-created-1",
+    });
+
+  const result = await createGosomJob({
+    name: "Queue Test",
+    keywords: ["bengkel"],
+    lang: "id",
+    lat: "-6.2",
+    lon: "106.8",
+    zoom: 15,
+    radius: 10000,
+    depth: 10,
+    fast_mode: false,
+    email: false,
+    extra_reviews: false,
+    max_time: 180,
+  });
+
+  assert.equal(result.state, "ready");
+  assert.equal(result.jobId, "gosom-created-1");
 });

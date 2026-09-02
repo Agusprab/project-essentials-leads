@@ -23,6 +23,18 @@ const gosomJobSchema = z.object({
   Data: gosomJobDataSchema,
 });
 
+const createGosomJobResponseSchema = z.union([
+  gosomJobSchema,
+  z.object({ job: gosomJobSchema }),
+  z.object({ Job: gosomJobSchema }),
+  z.object({ data: gosomJobSchema }),
+  z.object({ ID: z.string() }).passthrough(),
+  z.object({ id: z.string() }).passthrough(),
+  z.object({ job_id: z.string() }).passthrough(),
+  z.object({ jobId: z.string() }).passthrough(),
+  z.object({}).passthrough(),
+]);
+
 const gosomJobsEnvelopeSchema = z.union([
   z.array(gosomJobSchema),
   z.object({ jobs: z.array(gosomJobSchema) }),
@@ -73,9 +85,23 @@ export type CreateGosomJobInput = z.infer<typeof createGosomJobInputSchema>;
 export type GosomMutationResult =
   | {
       state: "ready";
+      job: GosomJob | null;
+      jobId: string | null;
     }
   | {
       state: "missing-config" | "not-found" | "error";
+      job?: null;
+      jobId?: null;
+    };
+
+export type GosomJobResult =
+  | {
+      state: "ready";
+      job: GosomJob;
+    }
+  | {
+      state: "missing-config" | "not-found" | "error";
+      job: null;
     };
 
 export async function listGosomJobs(): Promise<GosomJobsResult> {
@@ -160,8 +186,24 @@ export async function createGosomJob(
       throw new Error(`gosom_create_http_${response.status}`);
     }
 
+    const responseBody = await response.text();
+
+    if (!responseBody.trim()) {
+      return {
+        state: "ready",
+        job: null,
+        jobId: null,
+      };
+    }
+
+    const payload: unknown = JSON.parse(responseBody);
+    const parsed = createGosomJobResponseSchema.parse(payload);
+    const job = extractCreatedJob(parsed);
+
     return {
       state: "ready",
+      job,
+      jobId: job?.ID ?? extractCreatedJobId(parsed),
     };
   } catch (error) {
     console.error("Gagal membuat job Gosom", {
@@ -207,6 +249,8 @@ export async function deleteGosomJob(
 
     return {
       state: "ready",
+      job: null,
+      jobId: jobId,
     };
   } catch (error) {
     console.error("Gagal menghapus job Gosom", {
@@ -216,6 +260,63 @@ export async function deleteGosomJob(
 
     return {
       state: "error",
+    };
+  }
+}
+
+export async function getGosomJob(jobId: string): Promise<GosomJobResult> {
+  const baseUrl = process.env.GOSOM_API_URL;
+
+  if (!baseUrl) {
+    return {
+      state: "missing-config",
+      job: null,
+    };
+  }
+
+  try {
+    const response = await fetch(
+      new URL(`/api/v1/jobs/${encodeURIComponent(jobId)}`, baseUrl),
+      {
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+
+    if (response.status === 404) {
+      return {
+        state: "not-found",
+        job: null,
+      };
+    }
+
+    if (!response.ok) {
+      throw new Error(`gosom_job_http_${response.status}`);
+    }
+
+    const payload: unknown = await response.json();
+    const parsed = z
+      .union([
+        gosomJobSchema,
+        z.object({ job: gosomJobSchema }),
+        z.object({ Job: gosomJobSchema }),
+        z.object({ data: gosomJobSchema }),
+      ])
+      .parse(payload);
+
+    return {
+      state: "ready",
+      job: extractJob(parsed),
+    };
+  } catch (error) {
+    console.error("Gagal mengambil detail job Gosom", {
+      jobId,
+      error: error instanceof Error ? error.message : "unknown_error",
+    });
+
+    return {
+      state: "error",
+      job: null,
     };
   }
 }
@@ -287,4 +388,75 @@ function extractJobs(payload: z.infer<typeof gosomJobsEnvelopeSchema>): GosomJob
   }
 
   return payload.data;
+}
+
+function extractJob(
+  payload:
+    | GosomJob
+    | { job: GosomJob }
+    | { Job: GosomJob }
+    | { data: GosomJob },
+): GosomJob {
+  if ("ID" in payload) {
+    return payload;
+  }
+
+  if ("job" in payload) {
+    return payload.job;
+  }
+
+  if ("Job" in payload) {
+    return payload.Job;
+  }
+
+  return payload.data;
+}
+
+function extractCreatedJob(
+  payload: z.infer<typeof createGosomJobResponseSchema>,
+): GosomJob | null {
+  const directJob = gosomJobSchema.safeParse(payload);
+
+  if (directJob.success) {
+    return directJob.data;
+  }
+
+  if ("job" in payload) {
+    const parsed = gosomJobSchema.safeParse(payload.job);
+    return parsed.success ? parsed.data : null;
+  }
+
+  if ("Job" in payload) {
+    const parsed = gosomJobSchema.safeParse(payload.Job);
+    return parsed.success ? parsed.data : null;
+  }
+
+  if ("data" in payload) {
+    const parsed = gosomJobSchema.safeParse(payload.data);
+    return parsed.success ? parsed.data : null;
+  }
+
+  return null;
+}
+
+function extractCreatedJobId(
+  payload: z.infer<typeof createGosomJobResponseSchema>,
+): string | null {
+  if ("ID" in payload && typeof payload.ID === "string") {
+    return payload.ID;
+  }
+
+  if ("id" in payload && typeof payload.id === "string") {
+    return payload.id;
+  }
+
+  if ("job_id" in payload && typeof payload.job_id === "string") {
+    return payload.job_id;
+  }
+
+  if ("jobId" in payload && typeof payload.jobId === "string") {
+    return payload.jobId;
+  }
+
+  return null;
 }

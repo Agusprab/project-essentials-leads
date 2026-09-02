@@ -7,6 +7,7 @@
     "build": "next build --webpack",
     "test": "node --import tsx --test tests/**/*.test.ts",
     "worker:campaigns": "tsx src/workers/campaign-sender.ts",
+    "worker:scraping": "tsx src/workers/scraping-runner.ts",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",

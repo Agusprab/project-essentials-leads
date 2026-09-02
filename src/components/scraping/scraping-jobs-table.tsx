@@ -1,4 +1,3 @@
-import type { GosomJob } from "@/lib/gosom/client";
 import {
   deleteGosomJobAction,
   importGosomJobAction,
@@ -6,11 +5,12 @@ import {
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { DownloadIcon } from "@/components/ui/icons";
 import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
+import type { ScrapingJobListItem } from "@/lib/scraping/list-jobs";
 
 import { JobStatusBadge } from "./job-status-badge";
 
 type ScrapingJobsTableProps = {
-  jobs: GosomJob[];
+  jobs: ScrapingJobListItem[];
 };
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
@@ -32,7 +32,7 @@ export function ScrapingJobsTable({ jobs }: ScrapingJobsTableProps) {
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-[920px] w-full border-collapse text-left text-xs sm:text-sm">
+        <table className="min-w-[980px] w-full border-collapse text-left text-xs sm:text-sm">
           <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-200">
             <tr>
               <th scope="col" className="px-5 py-3 font-semibold">
@@ -50,6 +50,9 @@ export function ScrapingJobsTable({ jobs }: ScrapingJobsTableProps) {
               <th scope="col" className="px-4 py-3 font-semibold">
                 Radius
               </th>
+              <th scope="col" className="px-4 py-3 font-semibold">
+                Hasil
+              </th>
               <th scope="col" className="px-5 py-3 font-semibold text-right">
                 Aksi Pengelolaan
               </th>
@@ -57,17 +60,22 @@ export function ScrapingJobsTable({ jobs }: ScrapingJobsTableProps) {
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-700">
             {jobs.map((job) => (
-              <tr key={job.ID} className="align-middle transition hover:bg-slate-50/70">
+              <tr key={job.id} className="align-middle transition hover:bg-slate-50/70">
                 <td className="px-5 py-4">
-                  <p className="font-semibold text-slate-900">{job.Name}</p>
+                  <p className="font-semibold text-slate-900">{job.name}</p>
                   <span className="mt-1 inline-block rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">
-                    {job.ID}
+                    {job.externalJobId ?? "Belum dikirim ke Gosom"}
                   </span>
+                  {job.errorMessage ? (
+                    <p className="mt-1 max-w-xs text-[11px] text-rose-700">
+                      {job.errorMessage}
+                    </p>
+                  ) : null}
                 </td>
                 <td className="px-4 py-4">
-                  {job.Data.keywords.length > 0 ? (
+                  {job.keywords.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
-                      {job.Data.keywords.map((kw, i) => (
+                      {job.keywords.map((kw, i) => (
                         <span
                           key={i}
                           className="inline-block rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700 font-medium"
@@ -81,38 +89,48 @@ export function ScrapingJobsTable({ jobs }: ScrapingJobsTableProps) {
                   )}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-slate-600">
-                  {formatJobDate(job.Date)}
+                  {formatJobDate(job.date)}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
-                  <JobStatusBadge status={job.Status} />
+                  <JobStatusBadge status={job.status} />
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-slate-600">
-                  {formatRadius(job.Data.radius)}
+                  {formatRadius(job.radius)}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-slate-600">
+                  {job.resultCount.toLocaleString("id-ID")}
                 </td>
                 <td className="px-5 py-4 whitespace-nowrap text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <a
-                      href={`/api/gosom/jobs/${job.ID}/download`}
-                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 active:bg-slate-100"
-                    >
-                      <DownloadIcon className="size-3.5 text-slate-500" />
-                      CSV
-                    </a>
+                    {job.externalJobId && canImport(job.status) ? (
+                      <a
+                        href={`/api/gosom/jobs/${job.externalJobId}/download`}
+                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 active:bg-slate-100"
+                      >
+                        <DownloadIcon className="size-3.5 text-slate-500" />
+                        CSV
+                      </a>
+                    ) : (
+                      <span className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-400">
+                        <DownloadIcon className="size-3.5" />
+                        CSV
+                      </span>
+                    )}
                     <form action={importGosomJobAction}>
-                      <input type="hidden" name="jobId" value={job.ID} />
+                      <input type="hidden" name="jobId" value={job.externalJobId ?? ""} />
                       <PendingSubmitButton
                         label="Impor"
                         pendingLabel="Mengimpor..."
-                        disabled={!canImport(job.Status)}
+                        disabled={!job.externalJobId || !canImport(job.status)}
                         className="inline-flex h-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 shadow-2xs transition hover:bg-blue-100 disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed"
                       />
                     </form>
                     <form action={deleteGosomJobAction}>
-                      <input type="hidden" name="jobId" value={job.ID} />
+                      <input type="hidden" name="scrapeJobId" value={job.id} />
                       <ConfirmSubmitButton
                         label="Hapus"
                         pendingLabel="Menghapus..."
-                        confirmMessage={`Hapus job "${job.Name}" dari Gosom dan database lokal? Lead hasil job ini juga akan terhapus jika sudah pernah diimpor.`}
+                        confirmMessage={`Hapus job "${job.name}" dari antrean/Gosom dan database lokal? Lead hasil job ini juga akan terhapus jika sudah pernah diimpor.`}
                         icon="trash"
                       />
                     </form>
@@ -127,11 +145,9 @@ export function ScrapingJobsTable({ jobs }: ScrapingJobsTableProps) {
   );
 }
 
-function formatJobDate(value: string): string {
-  const date = new Date(value);
-
+function formatJobDate(date: Date): string {
   if (Number.isNaN(date.getTime())) {
-    return value || "-";
+    return "-";
   }
 
   return dateFormatter.format(date);

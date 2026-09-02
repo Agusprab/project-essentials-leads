@@ -3,15 +3,23 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-
-import { importGosomJobLeads } from "@/lib/leads/import-gosom-csv";
-import { createGosomJob, deleteGosomJob } from "@/lib/gosom/client";
-import { syncGosomJobs } from "@/lib/gosom/sync";
-import { scrapeJobs } from "@/db/schema";
 import { eq } from "drizzle-orm";
+
+import { scrapeJobs } from "@/db/schema";
+import { importGosomJobLeads } from "@/lib/leads/import-gosom-csv";
+import { deleteGosomJob } from "@/lib/gosom/client";
+import { syncGosomJobs } from "@/lib/gosom/sync";
+import {
+  enqueueScrapingJob,
+  removeScrapingQueueJob,
+} from "@/lib/queue/scraping";
 
 const importJobSchema = z.object({
   jobId: z.string().min(1).max(160),
+});
+
+const deleteJobSchema = z.object({
+  scrapeJobId: z.string().uuid(),
 });
 
 const createJobFormSchema = z.object({
@@ -38,6 +46,10 @@ export async function syncGosomJobsAction() {
 }
 
 export async function createGosomJobAction(formData: FormData) {
+  if (!process.env.DATABASE_URL || !process.env.REDIS_URL) {
+    redirect("/scraping?create=missing-config");
+  }
+
   const parsed = createJobFormSchema.safeParse({
     name: formData.get("name"),
     keywords: formData.get("keywords"),
@@ -58,31 +70,59 @@ export async function createGosomJobAction(formData: FormData) {
   }
 
   const values = parsed.data;
-  const result = await createGosomJob({
-    name: values.name,
-    keywords: values.keywords
-      .split(",")
-      .map((keyword) => keyword.trim())
-      .filter(Boolean),
-    lang: values.lang,
-    lat: values.lat,
-    lon: values.lon,
-    zoom: values.zoom,
-    radius: values.radius,
-    depth: values.depth,
-    fast_mode: values.fastMode === "on",
-    email: values.email === "on",
-    extra_reviews: values.extraReviews === "on",
-    max_time: values.maxTimeMinutes * 60,
-  });
+  const now = new Date();
+  const keywords = values.keywords
+    .split(",")
+    .map((keyword) => keyword.trim())
+    .filter(Boolean);
 
-  if (result.state === "ready") {
-    await syncGosomJobs();
+  if (keywords.length === 0) {
+    redirect("/scraping?create=invalid");
+  }
+
+  try {
+    const { db } = await import("@/db");
+    const [createdJob] = await db
+      .insert(scrapeJobs)
+      .values({
+        provider: "google_maps",
+        externalJobId: null,
+        name: values.name,
+        keywords,
+        language: values.lang,
+        latitude: values.lat,
+        longitude: values.lon,
+        zoom: values.zoom,
+        radius: values.radius,
+        depth: values.depth,
+        fastMode: values.fastMode === "on",
+        extractEmail: values.email === "on",
+        extraReviews: values.extraReviews === "on",
+        maxTimeSeconds: values.maxTimeMinutes * 60,
+        status: "queued",
+        queuedAt: now,
+        updatedAt: now,
+      })
+      .returning({
+        id: scrapeJobs.id,
+      });
+
+    if (!createdJob) {
+      throw new Error("scrape_job_not_created");
+    }
+
+    await enqueueScrapingJob(createdJob.id);
+  } catch (error) {
+    console.error("Gagal memasukkan job scraping ke antrean", {
+      error: error instanceof Error ? error.message : "unknown_error",
+    });
+
+    redirect("/scraping?create=error");
   }
 
   revalidatePath("/");
   revalidatePath("/scraping");
-  redirect(`/scraping?create=${result.state}`);
+  redirect("/scraping?create=queued");
 }
 
 export async function importGosomJobAction(formData: FormData) {
@@ -105,25 +145,62 @@ export async function importGosomJobAction(formData: FormData) {
 }
 
 export async function deleteGosomJobAction(formData: FormData) {
-  const parsed = importJobSchema.safeParse({
-    jobId: formData.get("jobId"),
+  const parsed = deleteJobSchema.safeParse({
+    scrapeJobId: formData.get("scrapeJobId"),
   });
 
   if (!parsed.success) {
     redirect("/scraping?delete=invalid-job");
   }
 
-  const result = await deleteGosomJob(parsed.data.jobId);
+  if (!process.env.DATABASE_URL) {
+    redirect("/scraping?delete=missing-config");
+  }
 
-  if (process.env.DATABASE_URL && result.state !== "error") {
+  let deleteState: "ready" | "not-found" | "error" = "ready";
+
+  try {
     const { db } = await import("@/db");
-    await db
-      .delete(scrapeJobs)
-      .where(eq(scrapeJobs.externalJobId, parsed.data.jobId));
+    const [job] = await db
+      .select({
+        id: scrapeJobs.id,
+        externalJobId: scrapeJobs.externalJobId,
+        status: scrapeJobs.status,
+      })
+      .from(scrapeJobs)
+      .where(eq(scrapeJobs.id, parsed.data.scrapeJobId))
+      .limit(1);
+
+    if (!job) {
+      deleteState = "not-found";
+    } else {
+      if (process.env.REDIS_URL) {
+        await removeScrapingQueueJob(job.id);
+      }
+
+      if (job.externalJobId) {
+        const result = await deleteGosomJob(job.externalJobId);
+
+        if (result.state === "error") {
+          deleteState = "error";
+        }
+      }
+
+      if (deleteState !== "error") {
+        await db.delete(scrapeJobs).where(eq(scrapeJobs.id, job.id));
+      }
+    }
+  } catch (error) {
+    console.error("Gagal menghapus job scraping", {
+      scrapeJobId: parsed.data.scrapeJobId,
+      error: error instanceof Error ? error.message : "unknown_error",
+    });
+
+    deleteState = "error";
   }
 
   revalidatePath("/");
   revalidatePath("/scraping");
   revalidatePath("/leads");
-  redirect(`/scraping?delete=${result.state}`);
+  redirect(`/scraping?delete=${deleteState}`);
 }

@@ -4,8 +4,8 @@ import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { ScrapingJobsTable } from "@/components/scraping/scraping-jobs-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CampaignIcon, LeadsIcon, PlusIcon, SearchMapIcon, SettingsIcon } from "@/components/ui/icons";
-import { getDashboardOverview, withLiveGosomJobMetrics } from "@/lib/dashboard/overview";
-import { listGosomJobs } from "@/lib/gosom/client";
+import { getDashboardOverview } from "@/lib/dashboard/overview";
+import { listScrapingJobs } from "@/lib/scraping/list-jobs";
 import { getSettingsStatus } from "@/lib/settings/status";
 
 export const dynamic = "force-dynamic";
@@ -13,14 +13,10 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const [overview, gosomJobsResult, settingsStatus] = await Promise.all([
     getDashboardOverview(),
-    listGosomJobs(),
+    listScrapingJobs(),
     getSettingsStatus(),
   ]);
 
-  const liveOverview =
-    gosomJobsResult.state === "ready"
-      ? withLiveGosomJobMetrics(overview, gosomJobsResult.jobs)
-      : overview;
   const recentJobs = gosomJobsResult.state === "ready" ? gosomJobsResult.jobs.slice(0, 4) : [];
 
   return (
@@ -62,7 +58,7 @@ export default async function HomePage() {
       </section>
 
       {/* KPI Cards & Quality Funnel */}
-      <DashboardOverview overview={liveOverview} />
+      <DashboardOverview overview={overview} />
 
       {/* Split Main Operations Grid (8 cols + 4 cols) */}
       <div className="grid gap-6 lg:grid-cols-12">
@@ -205,4 +201,3 @@ export default async function HomePage() {
     </div>
   );
 }
-

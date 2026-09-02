@@ -57,6 +57,13 @@
       "when": 1787950393025,
       "tag": "0007_nifty_proteus",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788332829013,
+      "tag": "0008_smooth_hulk",
+      "breakpoints": true
     }
   ]
 }
