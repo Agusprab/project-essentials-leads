@@ -4,9 +4,10 @@ import { deleteCampaignAction } from "@/app/(dashboard)/campaigns/actions";
 import { CampaignStatusBadge } from "@/components/campaigns/campaign-status-badge";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { DownloadIcon } from "@/components/ui/icons";
+import { createJakartaDateTimeFormatter } from "@/lib/datetime/timezone";
 import type { CampaignListItem } from "@/lib/campaigns/list-campaigns";
 
-const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+const dateFormatter = createJakartaDateTimeFormatter({
   dateStyle: "medium",
   timeStyle: "short",
 });
@@ -70,7 +71,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                     </Link>
                     <p className="mt-0.5 text-xs text-slate-500">
                       Limit {campaign.recipientLimit.toLocaleString("id-ID")} lead
-                      {campaign.mediaType === "image" ? " • Lampiran gambar" : ""}
+                      {campaign.mediaType ? " • Ada attachment" : ""}
                     </p>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">

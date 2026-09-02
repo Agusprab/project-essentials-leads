@@ -193,7 +193,15 @@ function getImportMessage(
     return "CSV belum bisa diunduh dari Gosom API.";
   }
 
-  return "Database belum bisa ditulis, impor dibatalkan.";
+  if (normalizedState === "already-importing") {
+    return "Job ini sedang diimpor. Tunggu proses berjalan selesai sebelum mencoba lagi.";
+  }
+
+  if (normalizedState === "database-error") {
+    return "Impor belum berhasil. Status job dikembalikan ke selesai dan detail teknis dicatat di log server.";
+  }
+
+  return "Impor belum bisa diproses.";
 }
 
 function getCreateMessage(

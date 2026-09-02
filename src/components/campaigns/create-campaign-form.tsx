@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { createCampaignAction } from "@/app/(dashboard)/campaigns/actions";
 import { campaignTemplateTokens } from "@/lib/campaigns/message-template";
 import type { CampaignLeadCandidate } from "@/lib/campaigns/list-campaign-leads";
+import { createJakartaDateTimeFormatter } from "@/lib/datetime/timezone";
 
 type CreateCampaignFormProps = {
   candidates: CampaignLeadCandidate[];
@@ -12,9 +13,10 @@ type CreateCampaignFormProps = {
 };
 
 const formId = "create-campaign-form";
+const draftStorageKey = "lead-dashboard:create-campaign-draft";
 const defaultMessageTemplate =
   "Halo {businessName}, kami ingin menawarkan kerja sama untuk bisnis Anda. Apakah saat ini bisa kami kirimkan detail singkatnya?";
-const lastCampaignDateFormatter = new Intl.DateTimeFormat("id-ID", {
+const lastCampaignDateFormatter = createJakartaDateTimeFormatter({
   dateStyle: "medium",
 });
 
@@ -22,13 +24,25 @@ export function CreateCampaignForm({
   candidates,
   filterSlot,
 }: CreateCampaignFormProps) {
-  const [delayMode, setDelayMode] = useState<"fixed" | "random">("fixed");
-  const [fixedDelayValue, setFixedDelayValue] = useState("3000");
-  const [customFixedDelaySeconds, setCustomFixedDelaySeconds] = useState("7");
-  const [messageTemplate, setMessageTemplate] = useState(defaultMessageTemplate);
+  const defaultRecipientLimit = String(Math.min(Math.max(candidates.length, 1), 100));
+  const [draft, setDraft] = useState<StoredDraft>(() =>
+    getInitialDraft(defaultRecipientLimit),
+  );
   const [selectedIds, setSelectedIds] = useState<string[]>(
     candidates.map((lead) => lead.id),
   );
+  const [persistedMedia, setPersistedMedia] =
+    useState<PersistedCampaignMedia | null>(null);
+  const {
+    campaignName,
+    recipientLimit,
+    delayMode,
+    fixedDelayValue,
+    customFixedDelaySeconds,
+    randomDelayMinSeconds,
+    randomDelayMaxSeconds,
+    messageTemplate,
+  } = draft;
   const allSelected =
     candidates.length > 0 && selectedIds.length === candidates.length;
   const selectedSet = new Set(selectedIds);
@@ -46,12 +60,46 @@ export function CreateCampaignForm({
   }
 
   function appendTemplateToken(token: string) {
-    setMessageTemplate((currentTemplate) => {
+    setDraft((currentDraft) => {
+      const currentTemplate = currentDraft.messageTemplate;
       const separator =
         currentTemplate.length === 0 || currentTemplate.endsWith(" ") ? "" : " ";
 
-      return `${currentTemplate}${separator}{${token}}`;
+      return {
+        ...currentDraft,
+        messageTemplate: `${currentTemplate}${separator}{${token}}`,
+      };
     });
+  }
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      draftStorageKey,
+      JSON.stringify(draft),
+    );
+  }, [draft]);
+
+  useEffect(() => {
+    void loadPersistedMedia().then((media) => {
+      setPersistedMedia(media);
+    });
+  }, []);
+
+  async function handleMediaChange(file: File | undefined) {
+    if (!file || file.size === 0) {
+      await clearPersistedMedia();
+      setPersistedMedia(null);
+      return;
+    }
+
+    const media = await fileToPersistedMedia(file);
+    await savePersistedMedia(media);
+    setPersistedMedia(media);
+  }
+
+  async function removePersistedMedia() {
+    await clearPersistedMedia();
+    setPersistedMedia(null);
   }
 
   return (
@@ -73,6 +121,13 @@ export function CreateCampaignForm({
               required
               minLength={3}
               maxLength={120}
+              value={campaignName}
+              onChange={(event) =>
+                setDraft((currentDraft) => ({
+                  ...currentDraft,
+                  campaignName: event.target.value,
+                }))
+              }
               placeholder="Promo pembukaan cabang Bekasi"
               className="mt-1 h-11 w-full rounded-lg border border-[#D9E0EA] px-3 text-sm text-[#1D293B] outline-none transition focus:border-[#2563eb]"
             />
@@ -87,7 +142,13 @@ export function CreateCampaignForm({
               type="number"
               min={1}
               max={500}
-              defaultValue={Math.min(Math.max(candidates.length, 1), 100)}
+              value={recipientLimit}
+              onChange={(event) =>
+                setDraft((currentDraft) => ({
+                  ...currentDraft,
+                  recipientLimit: event.target.value,
+                }))
+              }
               className="mt-1 h-11 w-full rounded-lg border border-[#D9E0EA] px-3 text-sm text-[#1D293B] outline-none transition focus:border-[#2563eb]"
             />
           </label>
@@ -105,7 +166,12 @@ export function CreateCampaignForm({
             maxLength={1200}
             rows={8}
             value={messageTemplate}
-            onChange={(event) => setMessageTemplate(event.target.value)}
+            onChange={(event) =>
+              setDraft((currentDraft) => ({
+                ...currentDraft,
+                messageTemplate: event.target.value,
+              }))
+            }
             className="mt-1 w-full resize-y rounded-lg border border-[#D9E0EA] px-3 py-3 text-sm leading-6 text-[#1D293B] outline-none transition focus:border-[#2563eb]"
           />
         </label>
@@ -145,9 +211,11 @@ export function CreateCampaignForm({
               form={formId}
               value={delayMode}
               onChange={(event) =>
-                setDelayMode(
-                  event.target.value === "random" ? "random" : "fixed",
-                )
+                setDraft((currentDraft) => ({
+                  ...currentDraft,
+                  delayMode:
+                    event.target.value === "random" ? "random" : "fixed",
+                }))
               }
               className="mt-1 h-11 w-full rounded-lg border border-[#D9E0EA] bg-white px-3 text-sm text-[#1D293B] outline-none transition focus:border-[#2563eb]"
             >
@@ -164,7 +232,12 @@ export function CreateCampaignForm({
                 </span>
                 <select
                   value={fixedDelayValue}
-                  onChange={(event) => setFixedDelayValue(event.target.value)}
+                  onChange={(event) =>
+                    setDraft((currentDraft) => ({
+                      ...currentDraft,
+                      fixedDelayValue: event.target.value,
+                    }))
+                  }
                   className="mt-1 h-11 w-full rounded-lg border border-[#D9E0EA] bg-white px-3 text-sm text-[#1D293B] outline-none transition focus:border-[#2563eb]"
                 >
                   <option value="1000">1 detik</option>
@@ -186,7 +259,10 @@ export function CreateCampaignForm({
                     max={30}
                     value={customFixedDelaySeconds}
                     onChange={(event) =>
-                      setCustomFixedDelaySeconds(event.target.value)
+                      setDraft((currentDraft) => ({
+                        ...currentDraft,
+                        customFixedDelaySeconds: event.target.value,
+                      }))
                     }
                     className="mt-1 h-11 w-full rounded-lg border border-[#D9E0EA] px-3 text-sm text-[#1D293B] outline-none transition focus:border-[#2563eb]"
                   />
@@ -220,7 +296,13 @@ export function CreateCampaignForm({
                   type="number"
                   min={1}
                   max={30}
-                  defaultValue={5}
+                  value={randomDelayMinSeconds}
+                  onChange={(event) =>
+                    setDraft((currentDraft) => ({
+                      ...currentDraft,
+                      randomDelayMinSeconds: event.target.value,
+                    }))
+                  }
                   className="mt-1 h-11 w-full rounded-lg border border-[#D9E0EA] px-3 text-sm text-[#1D293B] outline-none transition focus:border-[#2563eb]"
                 />
               </label>
@@ -234,7 +316,13 @@ export function CreateCampaignForm({
                   type="number"
                   min={1}
                   max={60}
-                  defaultValue={15}
+                  value={randomDelayMaxSeconds}
+                  onChange={(event) =>
+                    setDraft((currentDraft) => ({
+                      ...currentDraft,
+                      randomDelayMaxSeconds: event.target.value,
+                    }))
+                  }
                   className="mt-1 h-11 w-full rounded-lg border border-[#D9E0EA] px-3 text-sm text-[#1D293B] outline-none transition focus:border-[#2563eb]"
                 />
               </label>
@@ -249,23 +337,74 @@ export function CreateCampaignForm({
 
       <section className="rounded-xl border border-[#D9E0EA] bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold text-[#101828]">
-          Gambar Campaign
+          Attachment Campaign
         </h2>
         <label className="mt-4 block">
           <span className="block text-sm font-semibold text-[#344054]">
-            Upload gambar
+            Upload file
           </span>
           <input
             name="image"
             form={formId}
             type="file"
-            accept="image/*"
+            onChange={(event) => {
+              void handleMediaChange(event.target.files?.[0]);
+            }}
             className="mt-1 block w-full rounded-lg border border-[#D9E0EA] bg-white px-3 py-2 text-sm text-[#1D293B] file:mr-3 file:rounded-md file:border-0 file:bg-[#EFF8FF] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#175CD3]"
           />
         </label>
+        {persistedMedia ? (
+          <div className="mt-3 flex flex-col gap-2 rounded-lg border border-[#D9E0EA] bg-[#F8FAFC] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 text-sm">
+              <p className="truncate font-semibold text-[#344054]">
+                {persistedMedia.fileName}
+              </p>
+              <p className="text-xs text-[#667085]">
+                {formatFileSize(persistedMedia.size)} - {persistedMedia.mimeType}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void removePersistedMedia();
+              }}
+              className="inline-flex h-8 items-center justify-center rounded-lg border border-[#D9E0EA] bg-white px-3 text-xs font-semibold text-[#344054] transition hover:bg-[#F8FAFC]"
+            >
+              Hapus attachment
+            </button>
+          </div>
+        ) : null}
+        {persistedMedia ? (
+          <>
+            <input
+              type="hidden"
+              name="persistedMediaFileName"
+              value={persistedMedia.fileName}
+              form={formId}
+            />
+            <input
+              type="hidden"
+              name="persistedMediaMimeType"
+              value={persistedMedia.mimeType}
+              form={formId}
+            />
+            <input
+              type="hidden"
+              name="persistedMediaType"
+              value={persistedMedia.mediaType}
+              form={formId}
+            />
+            <input
+              type="hidden"
+              name="persistedMediaData"
+              value={persistedMedia.data}
+              form={formId}
+            />
+          </>
+        ) : null}
         <p className="mt-3 text-sm leading-6 text-[#667085]">
-          Maksimal 2 MB. Jika gambar diisi, campaign akan dikirim sebagai gambar
-          dengan caption pesan.
+          Maksimal 10 MB. Gambar umum dikirim sebagai gambar dengan caption,
+          sedangkan GIF dan file lain dikirim sebagai dokumen.
         </p>
       </section>
 
@@ -379,4 +518,245 @@ function resolveCustomDelayMs(value: string): number {
   }
 
   return Math.min(Math.max(1, seconds), 30) * 1000;
+}
+
+function getInitialDraft(defaultRecipientLimit: string): StoredDraft {
+  if (typeof window === "undefined") {
+    return createDefaultDraft(defaultRecipientLimit);
+  }
+
+  const storedDraft = window.localStorage.getItem(draftStorageKey);
+
+  if (!storedDraft) {
+    return createDefaultDraft(defaultRecipientLimit);
+  }
+
+  return parseStoredDraft(storedDraft, defaultRecipientLimit) ?? createDefaultDraft(defaultRecipientLimit);
+}
+
+function createDefaultDraft(recipientLimit: string): StoredDraft {
+  return {
+    campaignName: "",
+    recipientLimit,
+    delayMode: "fixed",
+    fixedDelayValue: "3000",
+    customFixedDelaySeconds: "7",
+    randomDelayMinSeconds: "5",
+    randomDelayMaxSeconds: "15",
+    messageTemplate: defaultMessageTemplate,
+  };
+}
+
+type StoredDraft = {
+  campaignName: string;
+  recipientLimit: string;
+  delayMode: "fixed" | "random";
+  fixedDelayValue: string;
+  customFixedDelaySeconds: string;
+  randomDelayMinSeconds: string;
+  randomDelayMaxSeconds: string;
+  messageTemplate: string;
+};
+
+type PersistedCampaignMedia = {
+  fileName: string;
+  mimeType: string;
+  mediaType: "image" | "video" | "audio" | "document";
+  data: string;
+  size: number;
+};
+
+const campaignMediaDatabaseName = "lead-dashboard-campaign-media";
+const campaignMediaStoreName = "attachments";
+const campaignMediaKey = "new-campaign";
+
+function parseStoredDraft(
+  value: string,
+  defaultRecipientLimit: string,
+): StoredDraft | null {
+  try {
+    const parsed: unknown = JSON.parse(value);
+
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
+    const draft = parsed as Partial<Record<keyof StoredDraft, unknown>>;
+
+    return {
+      campaignName: typeof draft.campaignName === "string" ? draft.campaignName : "",
+      recipientLimit:
+        typeof draft.recipientLimit === "string"
+          ? draft.recipientLimit
+          : defaultRecipientLimit,
+      delayMode: draft.delayMode === "random" ? "random" : "fixed",
+      fixedDelayValue:
+        typeof draft.fixedDelayValue === "string" ? draft.fixedDelayValue : "3000",
+      customFixedDelaySeconds:
+        typeof draft.customFixedDelaySeconds === "string"
+          ? draft.customFixedDelaySeconds
+          : "7",
+      randomDelayMinSeconds:
+        typeof draft.randomDelayMinSeconds === "string"
+          ? draft.randomDelayMinSeconds
+          : "5",
+      randomDelayMaxSeconds:
+        typeof draft.randomDelayMaxSeconds === "string"
+          ? draft.randomDelayMaxSeconds
+          : "15",
+      messageTemplate:
+        typeof draft.messageTemplate === "string"
+          ? draft.messageTemplate
+          : defaultMessageTemplate,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fileToPersistedMedia(file: File): Promise<PersistedCampaignMedia> {
+  return {
+    fileName: file.name || "campaign-attachment",
+    mimeType: file.type || "application/octet-stream",
+    mediaType: resolveMediaType(file.type),
+    data: await readFileAsBase64(file),
+    size: file.size,
+  };
+}
+
+function resolveMediaType(
+  mimeType: string,
+): PersistedCampaignMedia["mediaType"] {
+  if (mimeType === "image/gif") {
+    return "document";
+  }
+
+  if (
+    mimeType === "image/jpeg" ||
+    mimeType === "image/png" ||
+    mimeType === "image/webp"
+  ) {
+    return "image";
+  }
+
+  if (mimeType.startsWith("video/")) {
+    return "video";
+  }
+
+  if (mimeType.startsWith("audio/")) {
+    return "audio";
+  }
+
+  return "document";
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.addEventListener("load", () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      const [, base64Data = ""] = result.split(",");
+
+      resolve(base64Data);
+    });
+    reader.addEventListener("error", () => {
+      reject(reader.error ?? new Error("file_read_error"));
+    });
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatFileSize(size: number): string {
+  if (size < 1024 * 1024) {
+    return `${Math.max(1, Math.round(size / 1024)).toLocaleString("id-ID")} KB`;
+  }
+
+  return `${(size / 1024 / 1024).toLocaleString("id-ID", {
+    maximumFractionDigits: 1,
+  })} MB`;
+}
+
+async function savePersistedMedia(media: PersistedCampaignMedia): Promise<void> {
+  const database = await openCampaignMediaDatabase();
+
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(campaignMediaStoreName, "readwrite");
+    const store = transaction.objectStore(campaignMediaStoreName);
+    const request = store.put(media, campaignMediaKey);
+
+    request.addEventListener("success", () => resolve());
+    request.addEventListener("error", () => reject(request.error));
+  });
+}
+
+async function loadPersistedMedia(): Promise<PersistedCampaignMedia | null> {
+  const database = await openCampaignMediaDatabase();
+
+  return await new Promise((resolve, reject) => {
+    const transaction = database.transaction(campaignMediaStoreName, "readonly");
+    const store = transaction.objectStore(campaignMediaStoreName);
+    const request = store.get(campaignMediaKey);
+
+    request.addEventListener("success", () => {
+      resolve(parsePersistedMedia(request.result));
+    });
+    request.addEventListener("error", () => reject(request.error));
+  });
+}
+
+async function clearPersistedMedia(): Promise<void> {
+  const database = await openCampaignMediaDatabase();
+
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(campaignMediaStoreName, "readwrite");
+    const store = transaction.objectStore(campaignMediaStoreName);
+    const request = store.delete(campaignMediaKey);
+
+    request.addEventListener("success", () => resolve());
+    request.addEventListener("error", () => reject(request.error));
+  });
+}
+
+function openCampaignMediaDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.open(campaignMediaDatabaseName, 1);
+
+    request.addEventListener("upgradeneeded", () => {
+      request.result.createObjectStore(campaignMediaStoreName);
+    });
+    request.addEventListener("success", () => resolve(request.result));
+    request.addEventListener("error", () => reject(request.error));
+  });
+}
+
+function parsePersistedMedia(value: unknown): PersistedCampaignMedia | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const media = value as Partial<Record<keyof PersistedCampaignMedia, unknown>>;
+
+  if (
+    typeof media.fileName !== "string" ||
+    typeof media.mimeType !== "string" ||
+    typeof media.data !== "string" ||
+    typeof media.size !== "number" ||
+    !(
+      media.mediaType === "image" ||
+      media.mediaType === "video" ||
+      media.mediaType === "audio" ||
+      media.mediaType === "document"
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    fileName: media.fileName,
+    mimeType: media.mimeType,
+    mediaType: media.mediaType,
+    data: media.data,
+    size: media.size,
+  };
 }

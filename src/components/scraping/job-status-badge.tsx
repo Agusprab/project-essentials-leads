@@ -41,6 +41,12 @@ const statusConfig = {
     dot: "bg-emerald-500",
     pulse: false,
   },
+  importing: {
+    label: "Sedang impor",
+    className: "border-violet-300 bg-violet-50 text-violet-800",
+    dot: "bg-violet-500",
+    pulse: true,
+  },
   failed: {
     label: "Gagal",
     className: "border-rose-300 bg-rose-50 text-rose-800",

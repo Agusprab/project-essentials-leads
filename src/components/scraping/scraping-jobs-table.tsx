@@ -5,6 +5,7 @@ import {
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { DownloadIcon } from "@/components/ui/icons";
 import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
+import { createJakartaDateTimeFormatter } from "@/lib/datetime/timezone";
 import type { ScrapingJobListItem } from "@/lib/scraping/list-jobs";
 
 import { JobStatusBadge } from "./job-status-badge";
@@ -13,7 +14,7 @@ type ScrapingJobsTableProps = {
   jobs: ScrapingJobListItem[];
 };
 
-const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+const dateFormatter = createJakartaDateTimeFormatter({
   dateStyle: "medium",
   timeStyle: "short",
 });

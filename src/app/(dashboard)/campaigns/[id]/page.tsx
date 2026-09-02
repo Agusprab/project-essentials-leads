@@ -20,12 +20,13 @@ import {
   type CampaignQueueStatus,
 } from "@/lib/queue/campaigns";
 import { getDefaultTestNumber } from "@/lib/evolution/test-send";
+import { createJakartaDateTimeFormatter } from "@/lib/datetime/timezone";
 
 const paramsSchema = z.object({
   id: z.string().uuid(),
 });
 
-const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+const dateFormatter = createJakartaDateTimeFormatter({
   dateStyle: "medium",
   timeStyle: "short",
 });

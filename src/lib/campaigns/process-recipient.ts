@@ -3,8 +3,9 @@ import { and, count, eq, inArray } from "drizzle-orm";
 import { campaignRecipients, campaigns } from "@/db/schema";
 import { resolveCampaignDelayMs } from "@/lib/campaigns/delay";
 import {
-  sendEvolutionImageMessage,
+  sendEvolutionMediaMessage,
   sendEvolutionTextMessage,
+  type EvolutionMediaType,
 } from "@/lib/evolution/client";
 
 export type ProcessCampaignRecipientResult =
@@ -89,18 +90,20 @@ export async function processCampaignRecipient(
   }
 
   const delay = resolveCampaignDelayMs(recipient);
+  const mediaType = parseEvolutionMediaType(recipient.mediaType);
   const result =
-    recipient.mediaType === "image" &&
+    mediaType &&
     recipient.mediaFileName &&
     recipient.mediaMimeType &&
     recipient.mediaData
-      ? await sendEvolutionImageMessage({
+      ? await sendEvolutionMediaMessage({
           number: recipient.phoneNormalized,
           caption: recipient.messageText,
           delay,
           fileName: recipient.mediaFileName,
           mimeType: recipient.mediaMimeType,
           media: recipient.mediaData,
+          mediaType,
         })
       : await sendEvolutionTextMessage({
           number: recipient.phoneNormalized,
@@ -140,6 +143,19 @@ export async function processCampaignRecipient(
   await refreshCampaignCounts(recipient.campaignId);
 
   return { state: "ready" };
+}
+
+function parseEvolutionMediaType(value: string | null): EvolutionMediaType | null {
+  if (
+    value === "image" ||
+    value === "video" ||
+    value === "audio" ||
+    value === "document"
+  ) {
+    return value;
+  }
+
+  return null;
 }
 
 async function refreshCampaignCounts(campaignId: string) {

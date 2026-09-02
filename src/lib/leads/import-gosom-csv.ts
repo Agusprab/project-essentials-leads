@@ -14,6 +14,7 @@ export type ImportGosomJobResult =
       state:
         | "missing-config"
         | "job-not-found"
+        | "already-importing"
         | "download-not-found"
         | "download-error"
         | "database-error";
@@ -56,7 +57,10 @@ export async function importGosomJobLeads(
   try {
     const { db } = await import("@/db");
     const [job] = await db
-      .select({ id: scrapeJobs.id })
+      .select({
+        id: scrapeJobs.id,
+        status: scrapeJobs.status,
+      })
       .from(scrapeJobs)
       .where(eq(scrapeJobs.externalJobId, externalJobId))
       .limit(1);
@@ -64,6 +68,36 @@ export async function importGosomJobLeads(
     if (!job) {
       return {
         state: "job-not-found",
+        importedCount: 0,
+      };
+    }
+
+    if (job.status === "importing") {
+      return {
+        state: "already-importing",
+        importedCount: 0,
+      };
+    }
+
+    const importStartedAt = new Date();
+    const [claimedJob] = await db
+      .update(scrapeJobs)
+      .set({
+        status: "importing",
+        errorMessage: null,
+        updatedAt: importStartedAt,
+      })
+      .where(
+        and(
+          eq(scrapeJobs.id, job.id),
+          eq(scrapeJobs.status, job.status),
+        ),
+      )
+      .returning({ id: scrapeJobs.id });
+
+    if (!claimedJob) {
+      return {
+        state: "already-importing",
         importedCount: 0,
       };
     }
@@ -137,10 +171,38 @@ export async function importGosomJobLeads(
       error: error instanceof Error ? error.message : "unknown_error",
     });
 
+    await restoreJobAfterFailedImport(externalJobId);
+
     return {
       state: "database-error",
       importedCount: 0,
     };
+  }
+}
+
+async function restoreJobAfterFailedImport(externalJobId: string): Promise<void> {
+  try {
+    const { db } = await import("@/db");
+    const now = new Date();
+
+    await db
+      .update(scrapeJobs)
+      .set({
+        status: "ok",
+        errorMessage: "Impor lead gagal. Detail teknis dicatat di log server.",
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(scrapeJobs.externalJobId, externalJobId),
+          eq(scrapeJobs.status, "importing"),
+        ),
+      );
+  } catch (error) {
+    console.error("Gagal mengembalikan status job setelah impor gagal", {
+      externalJobId,
+      error: error instanceof Error ? error.message : "unknown_error",
+    });
   }
 }
 

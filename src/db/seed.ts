@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import { leads, scrapeJobs } from "@/db/schema";
+import { appTimeZone } from "@/lib/datetime/timezone";
 
 config({
   path: ".env.local",
@@ -15,6 +16,9 @@ if (!process.env.DATABASE_URL) {
 
 const client = postgres(process.env.DATABASE_URL, {
   max: 1,
+  connection: {
+    TimeZone: appTimeZone,
+  },
 });
 const db = drizzle(client);
 const now = new Date("2026-01-01T00:00:00.000Z");

@@ -3,13 +3,14 @@ import { z } from "zod";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatLeadAddress } from "@/lib/cleaning/address";
+import { createJakartaDateTimeFormatter } from "@/lib/datetime/timezone";
 import { getLead } from "@/lib/leads/get-lead";
 
 const paramsSchema = z.object({
   id: z.string().uuid(),
 });
 
-const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+const dateFormatter = createJakartaDateTimeFormatter({
   dateStyle: "medium",
   timeStyle: "short",
 });

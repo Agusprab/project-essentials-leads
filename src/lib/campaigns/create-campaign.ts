@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 
 import { campaignRecipients, campaigns, leads } from "@/db/schema";
 import { renderCampaignMessage } from "@/lib/campaigns/message-template";
+import type { EvolutionMediaType } from "@/lib/evolution/client";
 
 export type CreateCampaignInput = {
   name: string;
@@ -14,7 +15,7 @@ export type CreateCampaignInput = {
   leadIds: string[];
   media:
     | {
-        type: "image";
+        type: EvolutionMediaType;
         fileName: string;
         mimeType: string;
         data: string;

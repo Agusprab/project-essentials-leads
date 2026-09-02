@@ -24,13 +24,16 @@ export type EvolutionSendTextInput = {
   delay: number;
 };
 
-export type EvolutionSendImageInput = {
+export type EvolutionMediaType = "image" | "video" | "audio" | "document";
+
+export type EvolutionSendMediaInput = {
   number: string;
   caption: string;
   delay: number;
   fileName: string;
   mimeType: string;
   media: string;
+  mediaType: EvolutionMediaType;
 };
 
 export type EvolutionSendTextResult =
@@ -43,7 +46,7 @@ export type EvolutionSendTextResult =
       messageId: null;
     };
 
-export type EvolutionSendImageResult = EvolutionSendTextResult;
+export type EvolutionSendMediaResult = EvolutionSendTextResult;
 
 export type EvolutionConnectionStateResult =
   | {
@@ -64,10 +67,10 @@ export function buildEvolutionSendTextPayload(input: EvolutionSendTextInput) {
   };
 }
 
-export function buildEvolutionSendImagePayload(input: EvolutionSendImageInput) {
+export function buildEvolutionSendMediaPayload(input: EvolutionSendMediaInput) {
   return {
     number: input.number,
-    mediatype: "image",
+    mediatype: input.mediaType,
     mimetype: input.mimeType,
     caption: input.caption,
     media: input.media,
@@ -146,9 +149,9 @@ export async function sendEvolutionTextMessage(
   }
 }
 
-export async function sendEvolutionImageMessage(
-  input: EvolutionSendImageInput,
-): Promise<EvolutionSendImageResult> {
+export async function sendEvolutionMediaMessage(
+  input: EvolutionSendMediaInput,
+): Promise<EvolutionSendMediaResult> {
   const config = evolutionConfigSchema.safeParse({
     apiUrl: process.env.EVOLUTION_API_URL,
     instance: process.env.EVOLUTION_INSTANCE,
@@ -171,7 +174,7 @@ export async function sendEvolutionImageMessage(
           apikey: config.data.apiKey,
           "content-type": "application/json",
         },
-        body: JSON.stringify(buildEvolutionSendImagePayload(input)),
+        body: JSON.stringify(buildEvolutionSendMediaPayload(input)),
         cache: "no-store",
         signal: AbortSignal.timeout(20_000),
       },
@@ -194,8 +197,10 @@ export async function sendEvolutionImageMessage(
         : null,
     };
   } catch (error) {
-    console.error("Gagal mengirim gambar Evolution", {
+    console.error("Gagal mengirim media Evolution", {
       number: input.number,
+      mediaType: input.mediaType,
+      mimeType: input.mimeType,
       error: error instanceof Error ? error.message : "unknown_error",
     });
 

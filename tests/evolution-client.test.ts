@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   buildEvolutionConnectionStateUrl,
-  buildEvolutionSendImagePayload,
+  buildEvolutionSendMediaPayload,
   buildEvolutionSendTextPayload,
 } from "@/lib/evolution/client";
 
@@ -33,15 +33,16 @@ test("buildEvolutionConnectionStateUrl targets the configured instance", () => {
   );
 });
 
-test("buildEvolutionSendImagePayload uses sendMedia image shape", () => {
+test("buildEvolutionSendMediaPayload uses sendMedia image shape", () => {
   assert.deepEqual(
-    buildEvolutionSendImagePayload({
+    buildEvolutionSendMediaPayload({
       number: "6281234567890",
       caption: "Halo",
       delay: 3000,
       fileName: "promo.png",
       mimeType: "image/png",
       media: "base64-image",
+      mediaType: "image",
     }),
     {
       number: "6281234567890",
@@ -50,6 +51,29 @@ test("buildEvolutionSendImagePayload uses sendMedia image shape", () => {
       caption: "Halo",
       media: "base64-image",
       fileName: "promo.png",
+      delay: 3000,
+    },
+  );
+});
+
+test("buildEvolutionSendMediaPayload supports document attachments", () => {
+  assert.deepEqual(
+    buildEvolutionSendMediaPayload({
+      number: "6281234567890",
+      caption: "Halo",
+      delay: 3000,
+      fileName: "promo.gif",
+      mimeType: "image/gif",
+      media: "base64-gif",
+      mediaType: "document",
+    }),
+    {
+      number: "6281234567890",
+      mediatype: "document",
+      mimetype: "image/gif",
+      caption: "Halo",
+      media: "base64-gif",
+      fileName: "promo.gif",
       delay: 3000,
     },
   );

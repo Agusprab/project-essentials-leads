@@ -1,5 +1,6 @@
 import {
-  sendEvolutionImageMessage,
+  sendEvolutionMediaMessage,
+  type EvolutionMediaType,
   sendEvolutionTextMessage,
 } from "@/lib/evolution/client";
 
@@ -25,20 +26,22 @@ export async function sendTestTextMessage(input: {
   });
 }
 
-export async function sendTestImageMessage(input: {
+export async function sendTestMediaMessage(input: {
   number: string;
   caption: string;
   fileName: string;
   mimeType: string;
   media: string;
+  mediaType: EvolutionMediaType;
   delay?: number;
 }): Promise<TestSendResult> {
-  return sendEvolutionImageMessage({
+  return sendEvolutionMediaMessage({
     number: input.number,
     caption: input.caption,
     fileName: input.fileName,
     mimeType: input.mimeType,
     media: input.media,
+    mediaType: input.mediaType,
     delay: input.delay ?? 1000,
   });
 }
