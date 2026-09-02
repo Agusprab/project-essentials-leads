@@ -14,6 +14,7 @@ type CreateCampaignFormProps = {
 
 const formId = "create-campaign-form";
 const draftStorageKey = "lead-dashboard:create-campaign-draft";
+const templateStorageKey = "lead-dashboard:campaign-message-templates";
 const defaultMessageTemplate =
   "Halo {businessName}, kami ingin menawarkan kerja sama untuk bisnis Anda. Apakah saat ini bisa kami kirimkan detail singkatnya?";
 const lastCampaignDateFormatter = createJakartaDateTimeFormatter({
@@ -33,6 +34,9 @@ export function CreateCampaignForm({
   );
   const [persistedMedia, setPersistedMedia] =
     useState<PersistedCampaignMedia | null>(null);
+  const [savedTemplates, setSavedTemplates] = useState<SavedMessageTemplate[]>(
+    () => getInitialSavedTemplates(),
+  );
   const {
     campaignName,
     recipientLimit,
@@ -80,6 +84,13 @@ export function CreateCampaignForm({
   }, [draft]);
 
   useEffect(() => {
+    window.localStorage.setItem(
+      templateStorageKey,
+      JSON.stringify(savedTemplates),
+    );
+  }, [savedTemplates]);
+
+  useEffect(() => {
     void loadPersistedMedia().then((media) => {
       setPersistedMedia(media);
     });
@@ -100,6 +111,41 @@ export function CreateCampaignForm({
   async function removePersistedMedia() {
     await clearPersistedMedia();
     setPersistedMedia(null);
+  }
+
+  function saveCurrentTemplate() {
+    const trimmedTemplate = messageTemplate.trim();
+
+    if (trimmedTemplate.length < 10) {
+      return;
+    }
+
+    const template = {
+      id: globalThis.crypto.randomUUID(),
+      name: campaignName.trim() || `Template ${savedTemplates.length + 1}`,
+      message: trimmedTemplate,
+      savedAt: new Date().toISOString(),
+    };
+
+    setSavedTemplates((currentTemplates) =>
+      [
+        template,
+        ...currentTemplates.filter((item) => item.message !== trimmedTemplate),
+      ].slice(0, 12),
+    );
+  }
+
+  function loadSavedTemplate(template: SavedMessageTemplate) {
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      messageTemplate: template.message,
+    }));
+  }
+
+  function deleteSavedTemplate(templateId: string) {
+    setSavedTemplates((currentTemplates) =>
+      currentTemplates.filter((template) => template.id !== templateId),
+    );
   }
 
   return (
@@ -154,45 +200,96 @@ export function CreateCampaignForm({
           </label>
         </div>
 
-        <label className="mt-4 block">
-          <span className="block text-sm font-semibold text-[#344054]">
-            Template pesan
-          </span>
-          <textarea
-            name="messageTemplate"
-            form={formId}
-            required
-            minLength={10}
-            maxLength={1200}
-            rows={8}
-            value={messageTemplate}
-            onChange={(event) =>
-              setDraft((currentDraft) => ({
-                ...currentDraft,
-                messageTemplate: event.target.value,
-              }))
-            }
-            className="mt-1 w-full resize-y rounded-lg border border-[#D9E0EA] px-3 py-3 text-sm leading-6 text-[#1D293B] outline-none transition focus:border-[#2563eb]"
-          />
-        </label>
-        <div className="mt-3">
-          <p className="text-xs font-semibold uppercase tracking-normal text-[#667085]">
-            Data lead yang bisa dipakai
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {campaignTemplateTokens.map((item) => (
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_320px]">
+          <div>
+            <label className="block">
+              <span className="block text-sm font-semibold text-[#344054]">
+                Template pesan
+              </span>
+              <textarea
+                name="messageTemplate"
+                form={formId}
+                required
+                minLength={10}
+                maxLength={1200}
+                rows={8}
+                value={messageTemplate}
+                onChange={(event) =>
+                  setDraft((currentDraft) => ({
+                    ...currentDraft,
+                    messageTemplate: event.target.value,
+                  }))
+                }
+                className="mt-1 w-full resize-y rounded-lg border border-[#D9E0EA] px-3 py-3 text-sm leading-6 text-[#1D293B] outline-none transition focus:border-[#2563eb]"
+              />
+            </label>
+            <div className="mt-3">
+              <p className="text-xs font-semibold uppercase tracking-normal text-[#667085]">
+                Data lead yang bisa dipakai
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {campaignTemplateTokens.map((item) => (
+                  <button
+                    key={item.token}
+                    type="button"
+                    onClick={() => appendTemplateToken(item.token)}
+                    className="inline-flex min-h-8 items-center rounded-lg border border-[#D9E0EA] bg-[#F8FAFC] px-3 text-xs font-semibold text-[#344054] transition hover:border-[#B2CCFF] hover:bg-[#EFF8FF] hover:text-[#175CD3]"
+                    title={`Tambahkan {${item.token}}`}
+                  >
+                    {item.label} {"{"}
+                    {item.token}
+                    {"}"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-[#D9E0EA] bg-[#F8FAFC] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-[#344054]">
+                Template tersimpan
+              </h3>
               <button
-                key={item.token}
                 type="button"
-                onClick={() => appendTemplateToken(item.token)}
-                className="inline-flex min-h-8 items-center rounded-lg border border-[#D9E0EA] bg-[#F8FAFC] px-3 text-xs font-semibold text-[#344054] transition hover:border-[#B2CCFF] hover:bg-[#EFF8FF] hover:text-[#175CD3]"
-                title={`Tambahkan {${item.token}}`}
+                onClick={saveCurrentTemplate}
+                className="inline-flex h-8 items-center justify-center rounded-lg bg-[#2563eb] px-3 text-xs font-semibold text-white transition hover:bg-[#1d4ed8]"
               >
-                {item.label} {"{"}
-                {item.token}
-                {"}"}
+                Simpan
               </button>
-            ))}
+            </div>
+            <div className="mt-3 max-h-64 space-y-2 overflow-auto">
+              {savedTemplates.length > 0 ? (
+                savedTemplates.map((template) => (
+                  <div
+                    key={template.id}
+                    className="rounded-lg border border-[#D9E0EA] bg-white p-2"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => loadSavedTemplate(template)}
+                      className="block w-full text-left text-xs font-semibold text-[#175CD3] hover:underline"
+                    >
+                      {template.name}
+                    </button>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#667085]">
+                      {template.message}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => deleteSavedTemplate(template.id)}
+                      className="mt-2 text-xs font-semibold text-[#B42318] hover:underline"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className="rounded-lg border border-dashed border-[#D9E0EA] bg-white px-3 py-5 text-center text-xs leading-5 text-[#667085]">
+                  Belum ada template tersimpan.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -566,9 +663,68 @@ type PersistedCampaignMedia = {
   size: number;
 };
 
+type SavedMessageTemplate = {
+  id: string;
+  name: string;
+  message: string;
+  savedAt: string;
+};
+
 const campaignMediaDatabaseName = "lead-dashboard-campaign-media";
 const campaignMediaStoreName = "attachments";
 const campaignMediaKey = "new-campaign";
+
+function getInitialSavedTemplates(): SavedMessageTemplate[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const storedTemplates = window.localStorage.getItem(templateStorageKey);
+
+  if (!storedTemplates) {
+    return [];
+  }
+
+  return parseSavedTemplates(storedTemplates);
+}
+
+function parseSavedTemplates(value: string): SavedMessageTemplate[] {
+  try {
+    const parsed: unknown = JSON.parse(value);
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.flatMap((item) => {
+      if (!item || typeof item !== "object") {
+        return [];
+      }
+
+      const template = item as Partial<Record<keyof SavedMessageTemplate, unknown>>;
+
+      if (
+        typeof template.id !== "string" ||
+        typeof template.name !== "string" ||
+        typeof template.message !== "string" ||
+        typeof template.savedAt !== "string"
+      ) {
+        return [];
+      }
+
+      return [
+        {
+          id: template.id,
+          name: template.name,
+          message: template.message,
+          savedAt: template.savedAt,
+        },
+      ];
+    });
+  } catch {
+    return [];
+  }
+}
 
 function parseStoredDraft(
   value: string,

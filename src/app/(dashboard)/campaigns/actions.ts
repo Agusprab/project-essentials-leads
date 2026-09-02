@@ -14,6 +14,10 @@ import {
 import { createCampaignDraft } from "@/lib/campaigns/create-campaign";
 import { getCampaign } from "@/lib/campaigns/get-campaign";
 import {
+  duplicateCampaign,
+  updateCampaignDraft,
+} from "@/lib/campaigns/update-campaign";
+import {
   sendTestMediaMessage,
   sendTestTextMessage,
 } from "@/lib/evolution/test-send";
@@ -29,6 +33,15 @@ const createCampaignSchema = z.object({
   delayMaxMs: z.coerce.number().int().min(1).max(60),
   leadIds: z.array(z.string().uuid()).min(1).max(500),
 });
+
+const updateCampaignSchema = createCampaignSchema
+  .omit({
+    leadIds: true,
+  })
+  .extend({
+    campaignId: z.string().uuid(),
+    mediaMode: z.enum(["keep", "remove", "replace"]),
+  });
 
 const maxCampaignMediaSize = 10 * 1024 * 1024;
 const maxCampaignMediaBase64Length = Math.ceil(maxCampaignMediaSize * 1.37);
@@ -119,6 +132,75 @@ export async function createCampaignAction(formData: FormData) {
   redirect(`/campaigns/new?create=${result.state}`);
 }
 
+export async function updateCampaignAction(formData: FormData) {
+  const parsed = updateCampaignSchema.safeParse({
+    campaignId: formData.get("campaignId"),
+    name: formData.get("name"),
+    messageTemplate: formData.get("messageTemplate"),
+    recipientLimit: formData.get("recipientLimit"),
+    delayMs: formData.get("delayMs"),
+    delayMode: formData.get("delayMode"),
+    delayMinMs: formData.get("delayMinMs"),
+    delayMaxMs: formData.get("delayMaxMs"),
+    mediaMode: hasUploadedCampaignMedia(formData) ? "replace" : formData.get("mediaMode"),
+  });
+
+  const media = await parseCampaignMedia(formData);
+
+  if (!parsed.success || media.state === "invalid") {
+    redirect("/campaigns?update=invalid");
+  }
+
+  const delayMinMs =
+    parsed.data.delayMode === "fixed"
+      ? parsed.data.delayMs
+      : parsed.data.delayMinMs * 1000;
+  const delayMaxMs =
+    parsed.data.delayMode === "fixed"
+      ? parsed.data.delayMs
+      : parsed.data.delayMaxMs * 1000;
+
+  if (delayMinMs > delayMaxMs) {
+    redirect(`/campaigns/${parsed.data.campaignId}/edit?update=invalid-delay`);
+  }
+
+  const result = await updateCampaignDraft({
+    ...parsed.data,
+    delayMinMs,
+    delayMaxMs,
+    media: media.media,
+  });
+
+  if (result.state === "ready") {
+    revalidatePath("/");
+    revalidatePath("/campaigns");
+    revalidatePath(`/campaigns/${result.campaignId}`);
+    redirect(`/campaigns/${result.campaignId}?update=ready`);
+  }
+
+  redirect(`/campaigns/${parsed.data.campaignId}/edit?update=${result.state}`);
+}
+
+export async function duplicateCampaignAction(formData: FormData) {
+  const parsed = campaignControlSchema.safeParse({
+    campaignId: formData.get("campaignId"),
+  });
+
+  if (!parsed.success) {
+    redirect("/campaigns?duplicate=invalid");
+  }
+
+  const result = await duplicateCampaign(parsed.data.campaignId);
+
+  if (result.state === "ready") {
+    revalidatePath("/");
+    revalidatePath("/campaigns");
+    redirect(`/campaigns/${result.campaignId}?duplicate=ready`);
+  }
+
+  redirect(`/campaigns/${parsed.data.campaignId}?duplicate=${result.state}`);
+}
+
 async function parseCampaignMedia(
   formData: FormData,
 ): Promise<CampaignMediaParseResult> {
@@ -146,6 +228,12 @@ async function parseCampaignMedia(
       data: buffer.toString("base64"),
     },
   };
+}
+
+function hasUploadedCampaignMedia(formData: FormData): boolean {
+  const value = formData.get("image");
+
+  return value instanceof File && value.size > 0;
 }
 
 function parsePersistedCampaignMedia(

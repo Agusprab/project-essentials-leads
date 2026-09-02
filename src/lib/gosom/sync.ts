@@ -1,3 +1,5 @@
+import { sql } from "drizzle-orm";
+
 import { scrapeJobs } from "@/db/schema";
 
 import type { GosomJob } from "./client";
@@ -62,8 +64,16 @@ export async function syncGosomJobs(): Promise<SyncGosomJobsResult> {
             extractEmail: values.extractEmail,
             extraReviews: values.extraReviews,
             maxTimeSeconds: values.maxTimeSeconds,
-            status: values.status,
-            completedAt: values.completedAt,
+            status: sql`case
+              when ${scrapeJobs.status} in ('imported', 'importing') then ${scrapeJobs.status}
+              else ${values.status}
+            end`,
+            completedAt: sql`coalesce(${scrapeJobs.completedAt}, ${values.completedAt})`,
+            lastSyncedAt: now,
+            errorMessage: sql`case
+              when ${scrapeJobs.status} = 'imported' then null
+              else ${scrapeJobs.errorMessage}
+            end`,
             updatedAt: now,
           },
         });

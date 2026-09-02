@@ -4,9 +4,11 @@ import { z } from "zod";
 import {
   approveCampaignAction,
   cancelCampaignAction,
+  duplicateCampaignAction,
   retryFailedCampaignRecipientsAction,
   testCampaignAction,
 } from "@/app/(dashboard)/campaigns/actions";
+import { CampaignDraftCleanup } from "@/components/campaigns/campaign-draft-cleanup";
 import { CampaignStatusBadge } from "@/components/campaigns/campaign-status-badge";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
@@ -78,12 +80,15 @@ export default async function CampaignDetailPage({
   const approveMessage = getApproveMessage(query.approve, query.count);
   const controlMessage = getControlMessage(query.control, query.count);
   const testMessage = getTestMessage(query.test);
+  const updateMessage = getUpdateMessage(query.update);
+  const duplicateMessage = getDuplicateMessage(query.duplicate);
   const testNumber = getDefaultTestNumber();
   const canCancel = ["draft", "queued", "sending"].includes(campaign.status);
   const canRetry = campaign.failedRecipients > 0 && campaign.status !== "canceled";
 
   return (
     <section className="space-y-5">
+      {query.create === "ready" ? <CampaignDraftCleanup /> : null}
       <Link
         href="/campaigns"
         className="text-sm font-semibold text-[#175CD3] hover:text-[#1849A9]"
@@ -104,11 +109,29 @@ export default async function CampaignDetailPage({
             </p>
             <p className="mt-1 text-sm leading-6 text-[#667085]">
               {campaign.hasMedia
-                ? `Mengirim gambar${campaign.mediaFileName ? `: ${campaign.mediaFileName}` : ""}`
+                ? `Mengirim attachment${campaign.mediaFileName ? `: ${campaign.mediaFileName}` : ""}`
                 : "Mengirim teks saja"}
             </p>
           </div>
           <CampaignStatusBadge status={campaign.status} />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-[#EEF2F6] pt-4">
+          {campaign.status === "draft" ? (
+            <Link
+              href={`/campaigns/${campaign.id}/edit`}
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#B2DDFF] bg-[#EFF8FF] px-3 text-xs font-semibold text-[#175CD3] transition hover:bg-[#D1E9FF]"
+            >
+              Edit campaign
+            </Link>
+          ) : null}
+          <form action={duplicateCampaignAction}>
+            <input type="hidden" name="campaignId" value={campaign.id} />
+            <PendingSubmitButton
+              label="Duplikasi"
+              pendingLabel="Menduplikasi..."
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#D9E0EA] bg-white px-3 text-xs font-semibold text-[#344054] transition hover:bg-[#F8FAFC] disabled:cursor-wait"
+            />
+          </form>
         </div>
         {campaign.status === "draft" ? (
           <form
@@ -192,6 +215,24 @@ export default async function CampaignDetailPage({
           className={`rounded-lg border px-4 py-3 text-sm font-medium ${testMessage.className}`}
         >
           {testMessage.text}
+        </div>
+      ) : null}
+
+      {updateMessage ? (
+        <div
+          role="status"
+          className={`rounded-lg border px-4 py-3 text-sm font-medium ${updateMessage.className}`}
+        >
+          {updateMessage.text}
+        </div>
+      ) : null}
+
+      {duplicateMessage ? (
+        <div
+          role="status"
+          className={`rounded-lg border px-4 py-3 text-sm font-medium ${duplicateMessage.className}`}
+        >
+          {duplicateMessage.text}
         </div>
       ) : null}
 
@@ -604,6 +645,43 @@ function getTestMessage(
     text:
       messages[normalizedState] ??
       "Test campaign belum bisa dikirim. Detail teknis dicatat di log server.",
+    className: "border-[#FEDF89] bg-[#FFFAEB] text-[#B45309]",
+  };
+}
+
+function getUpdateMessage(
+  state: string | string[] | undefined,
+): { text: string; className: string } | null {
+  const normalizedState = Array.isArray(state) ? state[0] : state;
+
+  if (normalizedState !== "ready") {
+    return null;
+  }
+
+  return {
+    text: "Draft campaign berhasil diperbarui.",
+    className: "border-[#ABEFC6] bg-[#ECFDF3] text-[#047857]",
+  };
+}
+
+function getDuplicateMessage(
+  state: string | string[] | undefined,
+): { text: string; className: string } | null {
+  const normalizedState = Array.isArray(state) ? state[0] : state;
+
+  if (!normalizedState) {
+    return null;
+  }
+
+  if (normalizedState === "ready") {
+    return {
+      text: "Campaign berhasil diduplikasi sebagai draft baru.",
+      className: "border-[#ABEFC6] bg-[#ECFDF3] text-[#047857]",
+    };
+  }
+
+  return {
+    text: "Campaign belum bisa diduplikasi. Detail teknis dicatat di log server.",
     className: "border-[#FEDF89] bg-[#FFFAEB] text-[#B45309]",
   };
 }
