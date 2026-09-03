@@ -39,6 +39,7 @@ const recipientStatuses = [
   "sending",
   "sent",
   "failed",
+  "unknown",
   "canceled",
 ] as const satisfies CampaignRecipientStatusFilter[];
 
@@ -241,6 +242,7 @@ export default async function CampaignDetailPage({
         <MetricCard label="Menunggu" value={campaign.pendingRecipients} />
         <MetricCard label="Terkirim" value={campaign.sentRecipients} />
         <MetricCard label="Gagal" value={campaign.failedRecipients} />
+        <MetricCard label="Perlu cek" value={campaign.unknownRecipients} />
       </div>
 
       <QueueStatusCard
@@ -638,6 +640,8 @@ function getTestMessage(
     invalid: "Nomor test harus format 62xxxxxxxx.",
     "missing-config": "Konfigurasi Evolution API belum lengkap.",
     "not-found": "Campaign tidak ditemukan.",
+    timeout:
+      "Evolution timeout setelah request dikirim. Cek WhatsApp sebelum kirim ulang.",
     error: "Evolution API belum bisa mengirim test campaign.",
   };
 
@@ -731,6 +735,7 @@ function translateRecipientStatus(status: CampaignRecipientStatusFilter): string
     sending: "Mengirim",
     sent: "Terkirim",
     failed: "Gagal",
+    unknown: "Perlu cek",
     canceled: "Dibatalkan",
   };
 

@@ -42,7 +42,7 @@ export type EvolutionSendTextResult =
       messageId: string | null;
     }
   | {
-      state: "missing-config" | "error";
+      state: "missing-config" | "error" | "timeout";
       messageId: null;
     };
 
@@ -116,7 +116,7 @@ export async function sendEvolutionTextMessage(
         },
         body: JSON.stringify(buildEvolutionSendTextPayload(input)),
         cache: "no-store",
-        signal: AbortSignal.timeout(20_000),
+        signal: AbortSignal.timeout(30_000),
       },
     );
 
@@ -137,13 +137,14 @@ export async function sendEvolutionTextMessage(
         : null,
     };
   } catch (error) {
+    const isTimeout = isAbortError(error);
     console.error("Gagal mengirim pesan Evolution", {
       number: input.number,
       error: error instanceof Error ? error.message : "unknown_error",
     });
 
     return {
-      state: "error",
+      state: isTimeout ? "timeout" : "error",
       messageId: null,
     };
   }
@@ -176,7 +177,7 @@ export async function sendEvolutionMediaMessage(
         },
         body: JSON.stringify(buildEvolutionSendMediaPayload(input)),
         cache: "no-store",
-        signal: AbortSignal.timeout(20_000),
+        signal: AbortSignal.timeout(120_000),
       },
     );
 
@@ -197,6 +198,7 @@ export async function sendEvolutionMediaMessage(
         : null,
     };
   } catch (error) {
+    const isTimeout = isAbortError(error);
     console.error("Gagal mengirim media Evolution", {
       number: input.number,
       mediaType: input.mediaType,
@@ -205,10 +207,21 @@ export async function sendEvolutionMediaMessage(
     });
 
     return {
-      state: "error",
+      state: isTimeout ? "timeout" : "error",
       messageId: null,
     };
   }
+}
+
+function isAbortError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.name === "AbortError" ||
+    error.message.toLowerCase().includes("aborted")
+  );
 }
 
 export async function getEvolutionConnectionState(): Promise<EvolutionConnectionStateResult> {

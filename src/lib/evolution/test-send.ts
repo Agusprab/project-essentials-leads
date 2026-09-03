@@ -10,7 +10,7 @@ export type TestSendResult =
       messageId: string | null;
     }
   | {
-      state: "missing-config" | "error";
+      state: "missing-config" | "error" | "timeout";
       messageId: null;
     };
 

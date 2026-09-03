@@ -13,6 +13,8 @@ export function CampaignStatusBadge({ status }: CampaignStatusBadgeProps) {
           ? { className: "border-amber-300 bg-amber-50 text-amber-800", dot: "bg-amber-500", pulse: true }
           : normalized === "failed"
             ? { className: "border-rose-300 bg-rose-50 text-rose-800", dot: "bg-rose-500", pulse: false }
+            : normalized === "unknown"
+              ? { className: "border-violet-300 bg-violet-50 text-violet-800", dot: "bg-violet-500", pulse: false }
             : { className: "border-slate-300 bg-slate-100 text-slate-700", dot: "bg-slate-400", pulse: false };
 
   return (
@@ -41,10 +43,10 @@ function translateStatus(status: string): string {
     sent: "Terkirim",
     completed: "Selesai",
     failed: "Gagal",
+    unknown: "Perlu cek",
     skipped: "Dilewati",
     canceled: "Dibatalkan",
   };
 
   return labels[status] ?? status;
 }
-

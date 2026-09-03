@@ -1,4 +1,4 @@
-import { and, asc, eq, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, type SQL } from "drizzle-orm";
 
 import { campaignRecipients, campaigns, leads } from "@/db/schema";
 
@@ -20,6 +20,7 @@ export type CampaignDetail = {
   pendingRecipients: number;
   sentRecipients: number;
   failedRecipients: number;
+  unknownRecipients: number;
   createdAt: Date;
   updatedAt: Date;
   recipients: {
@@ -54,6 +55,7 @@ export type CampaignRecipientStatusFilter =
   | "sending"
   | "sent"
   | "failed"
+  | "unknown"
   | "canceled";
 
 export async function getCampaign(
@@ -103,31 +105,43 @@ export async function getCampaign(
     }
 
     const recipientWhere = buildRecipientWhere(id, options.recipientStatus);
-    const recipients = await db
-      .select({
-        id: campaignRecipients.id,
-        leadId: campaignRecipients.leadId,
-        businessName: leads.businessName,
-        category: leads.category,
-        phoneNormalized: campaignRecipients.phoneNormalized,
-        messageText: campaignRecipients.messageText,
-        status: campaignRecipients.status,
-        attemptCount: campaignRecipients.attemptCount,
-        errorMessage: campaignRecipients.errorMessage,
-        queuedAt: campaignRecipients.queuedAt,
-        lastAttemptAt: campaignRecipients.lastAttemptAt,
-        sentAt: campaignRecipients.sentAt,
-      })
-      .from(campaignRecipients)
-      .innerJoin(leads, eq(campaignRecipients.leadId, leads.id))
-      .where(recipientWhere)
-      .orderBy(asc(leads.businessName));
+    const [recipients, unknownRows] = await Promise.all([
+      db
+        .select({
+          id: campaignRecipients.id,
+          leadId: campaignRecipients.leadId,
+          businessName: leads.businessName,
+          category: leads.category,
+          phoneNormalized: campaignRecipients.phoneNormalized,
+          messageText: campaignRecipients.messageText,
+          status: campaignRecipients.status,
+          attemptCount: campaignRecipients.attemptCount,
+          errorMessage: campaignRecipients.errorMessage,
+          queuedAt: campaignRecipients.queuedAt,
+          lastAttemptAt: campaignRecipients.lastAttemptAt,
+          sentAt: campaignRecipients.sentAt,
+        })
+        .from(campaignRecipients)
+        .innerJoin(leads, eq(campaignRecipients.leadId, leads.id))
+        .where(recipientWhere)
+        .orderBy(asc(leads.businessName)),
+      db
+        .select({ value: count() })
+        .from(campaignRecipients)
+        .where(
+          and(
+            eq(campaignRecipients.campaignId, id),
+            eq(campaignRecipients.status, "unknown"),
+          ),
+        ),
+    ]);
 
     return {
       state: "ready",
       campaign: {
         ...campaign,
         hasMedia: Boolean(campaign.mediaData),
+        unknownRecipients: unknownRows[0]?.value ?? 0,
         recipients,
       },
     };

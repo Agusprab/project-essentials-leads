@@ -10,7 +10,7 @@ import {
 
 export type ProcessCampaignRecipientResult =
   | {
-      state: "ready" | "skipped";
+      state: "ready" | "skipped" | "unknown";
     }
   | {
       state: "missing-config" | "not-found" | "send-error";
@@ -111,6 +111,22 @@ export async function processCampaignRecipient(
           delay,
         });
 
+  if (result.state === "timeout") {
+    const unknownAt = new Date();
+    await db
+      .update(campaignRecipients)
+      .set({
+        status: "unknown",
+        errorMessage:
+          "Evolution timeout setelah request dikirim. Cek WhatsApp sebelum retry manual.",
+        updatedAt: unknownAt,
+      })
+      .where(eq(campaignRecipients.id, recipient.id));
+    await refreshCampaignCounts(recipient.campaignId);
+
+    return { state: "unknown" };
+  }
+
   if (result.state !== "ready") {
     const failedAt = new Date();
     await db
@@ -160,7 +176,7 @@ function parseEvolutionMediaType(value: string | null): EvolutionMediaType | nul
 
 async function refreshCampaignCounts(campaignId: string) {
   const { db } = await import("@/db");
-  const [pendingRows, sentRows, failedRows] = await Promise.all([
+  const [pendingRows, sentRows, failedRows, unknownRows] = await Promise.all([
     db
       .select({ value: count() })
       .from(campaignRecipients)
@@ -188,13 +204,24 @@ async function refreshCampaignCounts(campaignId: string) {
           eq(campaignRecipients.status, "failed"),
         ),
       ),
+    db
+      .select({ value: count() })
+      .from(campaignRecipients)
+      .where(
+        and(
+          eq(campaignRecipients.campaignId, campaignId),
+          eq(campaignRecipients.status, "unknown"),
+        ),
+      ),
   ]);
 
   const pendingRecipients = pendingRows[0]?.value ?? 0;
   const sentRecipients = sentRows[0]?.value ?? 0;
   const failedRecipients = failedRows[0]?.value ?? 0;
+  const unknownRecipients = unknownRows[0]?.value ?? 0;
   const completedAt =
-    pendingRecipients === 0 && sentRecipients + failedRecipients > 0
+    pendingRecipients === 0 &&
+    sentRecipients + failedRecipients + unknownRecipients > 0
       ? new Date()
       : null;
 
