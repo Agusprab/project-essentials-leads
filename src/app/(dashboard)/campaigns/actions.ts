@@ -29,8 +29,8 @@ const createCampaignSchema = z.object({
   recipientLimit: z.coerce.number().int().min(1).max(500),
   delayMs: z.coerce.number().int().min(1000).max(30000),
   delayMode: z.enum(["fixed", "random"]),
-  delayMinMs: z.coerce.number().int().min(1).max(30),
-  delayMaxMs: z.coerce.number().int().min(1).max(60),
+  delayMinMs: z.coerce.number().int().min(1).max(9999),
+  delayMaxMs: z.coerce.number().int().min(1).max(9999),
   leadIds: z.array(z.string().uuid()).min(1).max(500),
 });
 

@@ -113,7 +113,7 @@ export function EditCampaignForm({ campaign }: EditCampaignFormProps) {
                 name="delayMinMs"
                 type="number"
                 min={1}
-                max={30}
+                max={9999}
                 defaultValue={randomMinSeconds}
                 className="mt-1 h-11 w-full rounded-lg border border-[#D9E0EA] px-3 text-sm text-[#1D293B] outline-none transition focus:border-[#2563eb]"
               />
@@ -126,7 +126,7 @@ export function EditCampaignForm({ campaign }: EditCampaignFormProps) {
                 name="delayMaxMs"
                 type="number"
                 min={1}
-                max={60}
+                max={9999}
                 defaultValue={randomMaxSeconds}
                 className="mt-1 h-11 w-full rounded-lg border border-[#D9E0EA] px-3 text-sm text-[#1D293B] outline-none transition focus:border-[#2563eb]"
               />

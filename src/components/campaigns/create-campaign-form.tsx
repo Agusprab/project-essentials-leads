@@ -392,7 +392,7 @@ export function CreateCampaignForm({
                   form={formId}
                   type="number"
                   min={1}
-                  max={30}
+                  max={9999}
                   value={randomDelayMinSeconds}
                   onChange={(event) =>
                     setDraft((currentDraft) => ({
@@ -412,7 +412,7 @@ export function CreateCampaignForm({
                   form={formId}
                   type="number"
                   min={1}
-                  max={60}
+                  max={9999}
                   value={randomDelayMaxSeconds}
                   onChange={(event) =>
                     setDraft((currentDraft) => ({
@@ -428,7 +428,7 @@ export function CreateCampaignForm({
           )}
         </div>
         <p className="mt-3 text-sm leading-6 text-[#667085]">
-          Untuk random, nilai minimal dan maksimal diisi dalam detik.
+          Untuk random, nilai minimal dan maksimal diisi dalam detik. Maksimal 9999 detik.
         </p>
       </section>
 

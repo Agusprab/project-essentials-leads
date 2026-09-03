@@ -103,7 +103,7 @@ export function ScrapingJobsTable({ jobs }: ScrapingJobsTableProps) {
                 </td>
                 <td className="px-5 py-4 whitespace-nowrap text-right">
                   <div className="flex items-center justify-end gap-2">
-                    {job.externalJobId && canImport(job.status) ? (
+                    {job.externalJobId && canDownloadCsv(job.status) ? (
                       <a
                         href={`/api/gosom/jobs/${job.externalJobId}/download`}
                         className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 active:bg-slate-100"
@@ -164,4 +164,10 @@ function formatRadius(value: number | null | undefined): string {
 
 function canImport(status: string): boolean {
   return ["ok", "success", "completed"].includes(status.toLowerCase());
+}
+
+function canDownloadCsv(status: string): boolean {
+  return ["ok", "success", "completed", "imported"].includes(
+    status.toLowerCase(),
+  );
 }
