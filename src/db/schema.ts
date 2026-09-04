@@ -206,7 +206,7 @@ export const leads = pgTable(
       .defaultNow(),
   },
   (table) => [
-    uniqueIndex("leads_source_place_id_unique")
+    index("leads_source_place_id_index")
       .on(table.source, table.placeId),
     uniqueIndex("leads_job_source_row_key_unique")
       .on(table.scrapeJobId, table.sourceRowKey),

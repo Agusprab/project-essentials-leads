@@ -64,6 +64,13 @@
       "when": 1788332829013,
       "tag": "0008_smooth_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788507684412,
+      "tag": "0009_curly_black_tarantula",
+      "breakpoints": true
     }
   ]
 }
