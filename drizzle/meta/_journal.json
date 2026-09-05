@@ -71,6 +71,13 @@
       "when": 1788507684412,
       "tag": "0009_curly_black_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788614216558,
+      "tag": "0010_burly_rictor",
+      "breakpoints": true
     }
   ]
 }

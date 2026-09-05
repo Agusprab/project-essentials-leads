@@ -1,4 +1,7 @@
-import { testEvolutionTextAction } from "@/app/(dashboard)/settings/actions";
+import {
+  saveEvolutionSettingsAction,
+  testEvolutionTextAction,
+} from "@/app/(dashboard)/settings/actions";
 import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
 import { getDefaultTestNumber } from "@/lib/evolution/test-send";
 import { getSettingsStatus, type ConnectionStatus } from "@/lib/settings/status";
@@ -41,6 +44,11 @@ export default async function SettingsPage({
         ))}
       </div>
 
+      <EvolutionSettingsForm
+        settings={status.evolutionSettings}
+        message={getEvolutionSettingsMessage(params.evolution)}
+      />
+
       <TestMessageForm
         defaultNumber={testNumber}
         message={getTestMessage(params.test)}
@@ -73,6 +81,97 @@ export default async function SettingsPage({
           ))}
         </div>
       </section>
+    </section>
+  );
+}
+
+function EvolutionSettingsForm({
+  settings,
+  message,
+}: {
+  settings: {
+    apiUrl: string;
+    instance: string;
+    apiKeyConfigured: boolean;
+    apiKeySource: "database" | "environment" | "missing";
+  };
+  message: { text: string; className: string } | null;
+}) {
+  return (
+    <section className="overflow-hidden rounded-xl border border-slate-200/90 bg-white p-6 shadow-xs">
+      <div className="mb-4">
+        <div className="inline-flex items-center gap-2 text-xs font-semibold text-blue-700">
+          <span className="size-2 rounded-full bg-blue-600"></span>
+          Konfigurasi Evolution Aktif
+        </div>
+        <h2 className="mt-1 text-base font-bold text-slate-900">
+          Instance WhatsApp Pengiriman
+        </h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Ubah instance dan API key tanpa rebuild container. Worker campaign membaca konfigurasi ini saat mengirim pesan.
+        </p>
+      </div>
+
+      {message ? (
+        <div
+          role="status"
+          className={`mb-4 rounded-xl border px-4 py-3 text-xs sm:text-sm font-medium shadow-2xs ${message.className}`}
+        >
+          {message.text}
+        </div>
+      ) : null}
+
+      <form
+        action={saveEvolutionSettingsAction}
+        className="grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr_auto] lg:items-end"
+      >
+        <label>
+          <span className="block text-xs font-semibold text-slate-700">
+            URL Evolution API
+          </span>
+          <input
+            name="apiUrl"
+            required
+            type="url"
+            defaultValue={settings.apiUrl}
+            placeholder="http://host.docker.internal:8086"
+            className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 font-mono text-xs sm:text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          />
+        </label>
+        <label>
+          <span className="block text-xs font-semibold text-slate-700">
+            Nama Instance
+          </span>
+          <input
+            name="instance"
+            required
+            defaultValue={settings.instance}
+            placeholder="wa-essentials-bot"
+            className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 font-mono text-xs sm:text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          />
+        </label>
+        <label>
+          <span className="block text-xs font-semibold text-slate-700">
+            API Key
+          </span>
+          <input
+            name="apiKey"
+            type="password"
+            autoComplete="new-password"
+            placeholder={
+              settings.apiKeyConfigured
+                ? `Sudah terisi dari ${translateApiKeySource(settings.apiKeySource)}`
+                : "Masukkan API key"
+            }
+            className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 font-mono text-xs sm:text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          />
+        </label>
+        <PendingSubmitButton
+          label="Simpan"
+          pendingLabel="Menyimpan..."
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-xs font-semibold text-white shadow-2xs shadow-blue-600/20 transition hover:bg-blue-700 active:bg-blue-800 disabled:cursor-wait disabled:bg-blue-500"
+        />
+      </form>
     </section>
   );
 }
@@ -111,7 +210,7 @@ function TestMessageForm({
       <form action={testEvolutionTextAction} className="grid gap-4 lg:grid-cols-[260px_1fr_auto] lg:items-end">
         <label>
           <span className="block text-xs font-semibold text-slate-700">
-            Nomor WhatsApp Pengujuan
+            Nomor WhatsApp Pengujian
           </span>
           <input
             name="number"
@@ -181,6 +280,49 @@ function StatusPill({ state }: { state: ConnectionStatus["state"] }) {
       {config.label}
     </span>
   );
+}
+
+function translateApiKeySource(
+  source: "database" | "environment" | "missing",
+): string {
+  if (source === "database") {
+    return "database";
+  }
+
+  if (source === "environment") {
+    return ".env";
+  }
+
+  return "konfigurasi";
+}
+
+function getEvolutionSettingsMessage(
+  state: string | string[] | undefined,
+): { text: string; className: string } | null {
+  const normalizedState = Array.isArray(state) ? state[0] : state;
+
+  if (!normalizedState) {
+    return null;
+  }
+
+  if (normalizedState === "ready") {
+    return {
+      text: "Konfigurasi Evolution berhasil disimpan.",
+      className: "border-[#ABEFC6] bg-[#ECFDF3] text-[#047857]",
+    };
+  }
+
+  if (normalizedState === "invalid") {
+    return {
+      text: "URL, instance, atau API key tidak valid.",
+      className: "border-[#FEDF89] bg-[#FFFAEB] text-[#B45309]",
+    };
+  }
+
+  return {
+    text: "Konfigurasi Evolution belum bisa disimpan. Detail teknis dicatat di log server.",
+    className: "border-[#FECDCA] bg-[#FEF3F2] text-[#B42318]",
+  };
 }
 
 

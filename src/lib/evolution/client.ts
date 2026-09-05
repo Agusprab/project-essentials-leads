@@ -1,10 +1,6 @@
 import { z } from "zod";
 
-const evolutionConfigSchema = z.object({
-  apiUrl: z.string().url(),
-  instance: z.string().min(1),
-  apiKey: z.string().min(1),
-});
+import { getEvolutionConfig } from "@/lib/evolution/config";
 
 const evolutionSendResponseSchema = z
   .object({
@@ -92,13 +88,9 @@ export function buildEvolutionConnectionStateUrl(
 export async function sendEvolutionTextMessage(
   input: EvolutionSendTextInput,
 ): Promise<EvolutionSendTextResult> {
-  const config = evolutionConfigSchema.safeParse({
-    apiUrl: process.env.EVOLUTION_API_URL,
-    instance: process.env.EVOLUTION_INSTANCE,
-    apiKey: process.env.EVOLUTION_API_KEY,
-  });
+  const config = await getEvolutionConfig();
 
-  if (!config.success) {
+  if (!config) {
     return {
       state: "missing-config",
       messageId: null,
@@ -107,11 +99,11 @@ export async function sendEvolutionTextMessage(
 
   try {
     const response = await fetch(
-      `${config.data.apiUrl.replace(/\/$/, "")}/message/sendText/${config.data.instance}`,
+      `${config.apiUrl.replace(/\/$/, "")}/message/sendText/${config.instance}`,
       {
         method: "POST",
         headers: {
-          apikey: config.data.apiKey,
+          apikey: config.apiKey,
           "content-type": "application/json",
         },
         body: JSON.stringify(buildEvolutionSendTextPayload(input)),
@@ -153,13 +145,9 @@ export async function sendEvolutionTextMessage(
 export async function sendEvolutionMediaMessage(
   input: EvolutionSendMediaInput,
 ): Promise<EvolutionSendMediaResult> {
-  const config = evolutionConfigSchema.safeParse({
-    apiUrl: process.env.EVOLUTION_API_URL,
-    instance: process.env.EVOLUTION_INSTANCE,
-    apiKey: process.env.EVOLUTION_API_KEY,
-  });
+  const config = await getEvolutionConfig();
 
-  if (!config.success) {
+  if (!config) {
     return {
       state: "missing-config",
       messageId: null,
@@ -168,11 +156,11 @@ export async function sendEvolutionMediaMessage(
 
   try {
     const response = await fetch(
-      `${config.data.apiUrl.replace(/\/$/, "")}/message/sendMedia/${config.data.instance}`,
+      `${config.apiUrl.replace(/\/$/, "")}/message/sendMedia/${config.instance}`,
       {
         method: "POST",
         headers: {
-          apikey: config.data.apiKey,
+          apikey: config.apiKey,
           "content-type": "application/json",
         },
         body: JSON.stringify(buildEvolutionSendMediaPayload(input)),
@@ -225,13 +213,9 @@ function isAbortError(error: unknown): boolean {
 }
 
 export async function getEvolutionConnectionState(): Promise<EvolutionConnectionStateResult> {
-  const config = evolutionConfigSchema.safeParse({
-    apiUrl: process.env.EVOLUTION_API_URL,
-    instance: process.env.EVOLUTION_INSTANCE,
-    apiKey: process.env.EVOLUTION_API_KEY,
-  });
+  const config = await getEvolutionConfig();
 
-  if (!config.success) {
+  if (!config) {
     return {
       state: "missing-config",
       connectionState: null,
@@ -241,12 +225,12 @@ export async function getEvolutionConnectionState(): Promise<EvolutionConnection
   try {
     const response = await fetch(
       buildEvolutionConnectionStateUrl(
-        config.data.apiUrl,
-        config.data.instance,
+        config.apiUrl,
+        config.instance,
       ),
       {
         headers: {
-          apikey: config.data.apiKey,
+          apikey: config.apiKey,
         },
         cache: "no-store",
         signal: AbortSignal.timeout(10_000),

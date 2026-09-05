@@ -1,5 +1,9 @@
 import { sql } from "drizzle-orm";
 
+import {
+  getEvolutionSettingsForForm,
+  type EvolutionSettingsFormValues,
+} from "@/lib/evolution/config";
 import { getEvolutionConnectionState } from "@/lib/evolution/client";
 import { listGosomJobs } from "@/lib/gosom/client";
 
@@ -13,6 +17,7 @@ export type ConnectionStatus = {
 
 export type SettingsStatus = {
   services: ConnectionStatus[];
+  evolutionSettings: EvolutionSettingsFormValues;
   env: {
     name: string;
     status: "configured" | "missing";
@@ -31,15 +36,18 @@ const envNames = [
 ] as const;
 
 export async function getSettingsStatus(): Promise<SettingsStatus> {
-  const [database, redis, gosom, evolution] = await Promise.all([
-    checkDatabase(),
-    checkRedis(),
-    checkGosom(),
-    checkEvolution(),
-  ]);
+  const [database, redis, gosom, evolution, evolutionSettings] =
+    await Promise.all([
+      checkDatabase(),
+      checkRedis(),
+      checkGosom(),
+      checkEvolution(),
+      getEvolutionSettingsForForm(),
+    ]);
 
   return {
     services: [database, redis, gosom, evolution],
+    evolutionSettings,
     env: envNames.map((name) => ({
       name,
       status: process.env[name] ? "configured" : "missing",
